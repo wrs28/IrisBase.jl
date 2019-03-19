@@ -7,10 +7,10 @@ module DifferentialOperators
 using ..Bravais,
 ..BoundaryConditions,
 ..CoordinateSystems,
-..LinearAlgebra,
-..SparseArrays
+LinearAlgebra,
+SparseArrays
 
-import BoundaryConditions: get_dim_side, get_dim, get_side, get_bc_type, reorder, apply_args
+import ..BoundaryConditions: get_dim_side, get_dim, get_side, get_bc_type, reorder, apply_args
 
 export laplacian
 

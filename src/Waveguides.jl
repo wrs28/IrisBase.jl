@@ -19,6 +19,6 @@ include("Waveguides/waveguides_planar.jl")
 include("Waveguides/waveguides_halfspace.jl")
 include("Waveguides/waveguides_pc.jl")
 
-include("DefineSimulation.jl/iss.jl")
+include("DefineSimulation/iss.jl")
 
 end # module
