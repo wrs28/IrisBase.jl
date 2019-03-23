@@ -17,34 +17,35 @@ build_domain
 
 `Subdomains(functions, params, types, ε's, F's)` creates region with specified parameters
 """
-struct Subdomains{TSD,TP}
-    is_in_subdomain::Array{TSD,1}
-    params::Array{TP,1}
-    type::Array{Symbol,1}
-    ε::Array{Function,1}
-    F::Array{Function,1}
+struct Subdomains{TSD,TP,TDT,TE,TF}
+    is_in_subdomain::TSD
+    params::TP
+    type::TDT
+    ε::TE
+    F::TF
+
     function Subdomains()
-        new{AbstractShape,Dict{Symbol,Float64}}(AbstractShape[], Dict{Symbol,Float64}[], Symbol[], Function[], Function[])
+        new{Tuple{},Tuple{},Tuple{},Tuple{},Tuple{}}((), (), (), (), ())
     end
-    function Subdomains(is_in_subdomain::Array{Tsd,1}, params::Array{Tp,1}, type, ε, F) where Tsd<:AbstractShape where Tp<:Dict
-        new{Tsd,Tp}(is_in_subdomain, params, type, ε, F)
+    function Subdomains(is_in_subdomain::Tsd, params::Tp, type::Tdt, ε::Te, F::Tf) where {Tsd,Tp,Tdt,Te,Tf}#{Tsd<:NTuple{N,AbstractShape},Tp<:NTuple{N,AbstractDict},Tdt<:AbstractDomain,} where N
+        new{Tsd,Tp,Tdt,Te,Tf}(is_in_subdomain, params, type, ε, F)
     end
-end
-Base.show(io::IO, sbd::Subdomains) = begin
-    print(io,
-    typeof(sbd), " with ", length(sbd.is_in_subdomain), " subdomains:")
-    temp0 = [["\n\t\tshape: ", sbd.is_in_subdomain[i]] for i ∈ eachindex(sbd.params)]
-    temp1 = [["\n\t\tε: ", sbd.ε[i]] for i ∈ eachindex(sbd.ε)]
-    temp2 = [["\n\t\tF: ", sbd.F[i]] for i ∈ eachindex(sbd.F)]
-    temp3 = [["\n\t\tparams: ", sbd.params[i]] for i ∈ eachindex(sbd.params)]
-    temp4 = [["\n\t\ttype: ", sbd.type[i]] for i ∈ eachindex(sbd.type)]
-    for i ∈ eachindex(temp1)
-        print(io, "\n\tsubdomain ", i)
-        print(io, temp0[i]...)
-        print(io, temp1[i]...)
-        print(io, temp2[i]...)
-        print(io, temp3[i]...)
-        print(io, temp4[i]...)
+
+    function Base.show(io::IO, sbd::Subdomains)
+        print(io, "Subdomains, with ", length(sbd.is_in_subdomain), " subdomains:")
+        temp0 = [["\n\t\tshape: ", sbd.is_in_subdomain[i]] for i ∈ eachindex(sbd.params)]
+        temp1 = [["\n\t\tε: ", sbd.ε[i]] for i ∈ eachindex(sbd.ε)]
+        temp2 = [["\n\t\tF: ", sbd.F[i]] for i ∈ eachindex(sbd.F)]
+        temp3 = [["\n\t\tparams: ", sbd.params[i]] for i ∈ eachindex(sbd.params)]
+        temp4 = [["\n\t\ttype: ", sbd.type[i]] for i ∈ eachindex(sbd.type)]
+        for i ∈ eachindex(temp1)
+            print(io, "\n\tsubdomain ", i)
+            print(io, temp0[i]...)
+            print(io, temp1[i]...)
+            print(io, temp2[i]...)
+            print(io, temp3[i]...)
+            print(io, temp4[i]...)
+        end
     end
 end
 
@@ -58,18 +59,18 @@ end
 function add_subdomain(
                     is_in_subdomain::AbstractShape,
                     params = Dict(),
-                    type::Symbol = :background,
+                    type::AbstractDomain = GenericDomain(),
                     ε::Function = piecewise_constant_ε,
                     F::Function = piecewise_constant_F,
                     old_subdomains::Subdomains = Subdomains()
                     )
 
     return Subdomains(
-                vcat(is_in_subdomain, old_subdomains.is_in_subdomain),
-                vcat(params, old_subdomains.params),
-                vcat(type, old_subdomains.type),
-                vcat(ε, old_subdomains.ε),
-                vcat(F, old_subdomains.F)
+                tuple(is_in_subdomain, old_subdomains.is_in_subdomain...),
+                tuple(params, old_subdomains.params...),
+                tuple(type, old_subdomains.type...),
+                tuple(ε, old_subdomains.ε...),
+                tuple(F, old_subdomains.F...)
                 )
 end
 """
@@ -79,29 +80,26 @@ function add_subdomain(
             domain::Domain;
             is_in_subdomain::AbstractShape,
             params = Dict(),
-            type::Symbol = :background,
+            type::AbstractDomain = GenericDomain(),
             ε::Function = piecewise_constant_ε,
             F::Function = piecewise_constant_F
             )
 
-    subdomains =  Subdomains(
-                vcat(is_in_subdomain, domain.is_in_subdomain),
-                vcat(params, domain.subdomain_params),
-                vcat(type, domain.subdomain_type),
-                vcat(ε, domain.subdomain_ε),
-                vcat(F, domain.subdomain_F)
-                )
+    # subdomains =  Subdomains(
+    #             tuple(is_in_subdomain, domain.is_in_subdomain...),
+    #             tuple(params, domain.subdomain_params...),
+    #             tuple(type, domain.subdomain_type...),
+    #             tuple(ε, domain.subdomain_ε...),
+    #             tuple(F, domain.subdomain_F...)
+    #             )
 
-    return build_domain(subdomains;
-        is_in_domain = domain.is_in_domain,
-        domain_params = domain.domain_params,
-        domain_type = domain.domain_type,
-        domain_ε = domain.domain_ε,
-        domain_F = domain.domain_F,
-        lattice = domain.lattice,
-        which_asymptote = domain.which_asymptote,
-        which_waveguide = domain.which_waveguide
-        )
+    subdomains =  Subdomains(domain.is_in_subdomain,
+                    domain.subdomain_params,
+                    domain.subdomain_type,
+                    domain.subdomain_ε,
+                    domain.subdomain_F)
+
+    return build_domain(domain,subdomains)
 end
 """
     domain = add_subdomain(domain, subdomains)
@@ -109,12 +107,12 @@ end
 """
 function add_subdomain(domain::Domain, subdomains::Subdomains)
 
-    subdomains =  Subdomains(
-                vcat(subdomains.is_in_subdomain, domain.is_in_subdomain),
-                vcat(subdomains.params, domain.subdomain_params),
-                vcat(subdomains.type, domain.subdomain_type),
-                vcat(subdomains.ε, domain.subdomain_ε),
-                vcat(subdomains.F, domain.subdomain_F)
+    subdomains = Subdomains(
+                tuple(subdomains.is_in_subdomain, domain.is_in_subdomain...),
+                tuple(subdomains.params, domain.subdomain_params...),
+                tuple(subdomains.type, domain.subdomain_type...),
+                tuple(subdomains.ε, domain.subdomain_ε...),
+                tuple(subdomains.F, domain.subdomain_F...)
                 )
 
     return build_domain(subdomains;
@@ -129,7 +127,7 @@ function add_subdomain(domain::Domain, subdomains::Subdomains)
         )
 end
 function add_subdomain(subdomains::Subdomains, domain::Domain)
-    return add_subdomaiun(domain, subdomain)
+    return add_subdomain(domain, subdomain)
 end
 
 
@@ -141,13 +139,13 @@ function build_domain(
             subomains::Tsd = Subdomains();
             is_in_domain::Tsh = Universe(),
             domain_params::Td = Dict(:n₁ => 1, :n₂ => 0, :F => 0),
-            domain_type::Symbol = :background,
+            domain_type::Tdt = GenericDomain(),
             domain_ε::Function = piecewise_constant_ε,
             domain_F::Function = piecewise_constant_F,
             lattice::BravaisLattice = BravaisLattice(),
             which_asymptote::Symbol = :none,
             which_waveguide::Int = 0
-            ) where Tsd<:Subdomains where Tsh<:AbstractShape where Td<:Dict
+            ) where {Tsd<:Subdomains, Tsh<:AbstractShape, Td<:Dict, Tdt<:AbstractDomain}
 
     return Domain(; is_in_domain=is_in_domain,
                     domain_params=domain_params,
@@ -174,7 +172,7 @@ end
 function Shapes.Circle(R::Number, x0::Number, y0::Number,
             params::Dict,
             subdomains::Subdomains;
-            type::Symbol=:background,
+            type::AbstractDomain=GenericDomain(),
             ε::Function = piecewise_constant_ε,
             F::Function = piecewise_constant_F)
 
@@ -186,7 +184,7 @@ end
 function Shapes.Circle(R::Number, x0::Number, y0::Number,
             params::Dict,
             domain::Domain;
-            type::Symbol=:background,
+            type::AbstractDomain=GenericDomain(),
             ε::Function = piecewise_constant_ε,
             F::Function = piecewise_constant_F)
 
@@ -198,7 +196,7 @@ end
 """
 function Shapes.Circle(R::Number, x0::Number, y0::Number,
             params::Dict;
-            type::Symbol=:background,
+            type::AbstractDomain=GenericDomain(),
             ε::Function = piecewise_constant_ε,
             F::Function = piecewise_constant_F)
 
@@ -213,7 +211,7 @@ end
 function Shapes.Ellipse(a::Number, b::Number, x0::Number, y0::Number, θ::Number,
             params::Dict,
             subdomains::Subdomains;
-            type::Symbol=:background,
+            type::AbstractDomain=GenericDomain(),
             ε::Function = piecewise_constant_ε,
             F::Function = piecewise_constant_F)
 
@@ -225,7 +223,7 @@ end
 function Shapes.Ellipse(a::Number, b::Number, x0::Number, y0::Number, θ::Number,
             params::Dict,
             domain::Domain;
-            type::Symbol=:background,
+            type::AbstractDomain=GenericDomain(),
             ε::Function = piecewise_constant_ε,
             F::Function = piecewise_constant_F)
 
@@ -237,7 +235,7 @@ end
 """
 function Shapes.Ellipse(a::Number, b::Number, x0::Number, y0::Number, θ::Number,
             params::Dict;
-            type::Symbol=:background,
+            type::AbstractDomain=GenericDomain(),
             ε::Function = piecewise_constant_ε,
             F::Function = piecewise_constant_F)
 
@@ -252,7 +250,7 @@ end
 function Shapes.Square(a::Number, x0::Number, y0::Number, θ::Number,
             params::Dict,
             subdomains::Subdomains;
-            type::Symbol=:background,
+            type::AbstractDomain=GenericDomain(),
             ε::Function = piecewise_constant_ε,
             F::Function = piecewise_constant_F)
 
@@ -264,7 +262,7 @@ end
 function Shapes.Square(a::Number, x0::Number, y0::Number, θ::Number,
             params::Dict,
             domain::Domain;
-            type::Symbol=:background,
+            type::AbstractDomain=GenericDomain(),
             ε::Function = piecewise_constant_ε,
             F::Function = piecewise_constant_F)
 
@@ -276,7 +274,7 @@ end
 """
 function Shapes.Square(a::Number, x0::Number, y0::Number, θ::Number,
             params::Dict;
-            type::Symbol=:background,
+            type::AbstractDomain=GenericDomain(),
             ε::Function = piecewise_constant_ε,
             F::Function = piecewise_constant_F)
 
@@ -291,7 +289,7 @@ end
 function Shapes.Rectangle(a::Number, b::Number, x0::Number, y0::Number, θ::Number,
             params::Dict,
             subdomains::Subdomains;
-            type::Symbol=:background,
+            type::AbstractDomain=GenericDomain(),
             ε::Function = piecewise_constant_ε,
             F::Function = piecewise_constant_F)
 
@@ -303,7 +301,7 @@ end
 function Shapes.Rectangle(a::Number, b::Number, x0::Number, y0::Number, θ::Number,
             params::Dict,
             domain::Domain;
-            type::Symbol=:background,
+            type::AbstractDomain=GenericDomain(),
             ε::Function = piecewise_constant_ε,
             F::Function = piecewise_constant_F)
 
@@ -315,7 +313,7 @@ end
 """
 function Shapes.Rectangle(a::Number, b::Number, x0::Number, y0::Number, θ::Number,
             params::Dict;
-            type::Symbol=:background,
+            type::AbstractDomain=GenericDomain(),
             ε::Function = piecewise_constant_ε,
             F::Function = piecewise_constant_F)
 
@@ -330,7 +328,7 @@ end
 function Shapes.Parallelogram(a::Number, b::Number, α::Number, x0::Number, y0::Number, θ::Number,
             params::Dict,
             subdomains::Subdomains;
-            type::Symbol=:background,
+            type::AbstractDomain=GenericDomain(),
             ε::Function = piecewise_constant_ε,
             F::Function = piecewise_constant_F)
 
@@ -342,7 +340,7 @@ end
 function Shapes.Parallelogram(a::Number, b::Number, α::Number, x0::Number, y0::Number, θ::Number,
             params::Dict,
             domain::Domain;
-            type::Symbol=:background,
+            type::AbstractDomain=GenericDomain(),
             ε::Function = piecewise_constant_ε,
             F::Function = piecewise_constant_F)
 
@@ -354,7 +352,7 @@ end
 """
 function Shapes.Parallelogram(a::Number, b::Number, α::Number, x0::Number, y0::Number, θ::Number,
             params::Dict;
-            type::Symbol=:background,
+            type::AbstractDomain=GenericDomain(),
             ε::Function = piecewise_constant_ε,
             F::Function = piecewise_constant_F)
 
@@ -369,7 +367,7 @@ end
 function Shapes.Universe(
             params::Dict,
             subdomains::Subdomains;
-            type::Symbol=:background,
+            type::AbstractDomain=GenericDomain(),
             ε::Function = piecewise_constant_ε,
             F::Function = piecewise_constant_F)
 
@@ -380,7 +378,7 @@ end
 """
 function Shapes.Universe(
             params::Dict;
-            type::Symbol=:background,
+            type::AbstractDomain=GenericDomain(),
             ε::Function = piecewise_constant_ε,
             F::Function = piecewise_constant_F)
 
@@ -392,7 +390,7 @@ end
 """
 function Shapes.Universe(
             n1::Number;
-            type::Symbol=:background,
+            type::AbstractDomain=GenericDomain(),
             ε::Function = piecewise_constant_ε,
             F::Function = piecewise_constant_F)
 

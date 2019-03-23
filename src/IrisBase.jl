@@ -17,7 +17,7 @@ noBL,
 DirichletBC,
 NeumannBC,
 RobinBC,
-PeriodicBC,
+FloquetBC,
 MatchedBC
 
 include("DielectricFunctions.jl")
@@ -47,7 +47,6 @@ Boundary,
 Channels,
 Scattering,
 Simulation
-
 
 include("ConstructionTools.jl")
 using .ConstructionTools

@@ -14,21 +14,21 @@ import ..BoundaryConditions: get_dim_side, get_dim, get_side, get_bc_type, reord
 
 export laplacian
 
-
 struct laplacian{DIM,POS} end
 """
     laplacian(N, coordinate_system, Δ, bcs[, bls, k, ka, kb, ind]; kwargs...)
 
     laplacian{DIM}(N, coordinate_system, Δ, bcs[, bls, k, ka, kb, ind]; kwargs...)
 """
-function laplacian(N, coordinate_system::Type{TCS}, Δ, bcs, bls=ezbl(:n), args...; kwargs...) where TCS<:CoordinateSystem
+function laplacian(N, coordinate_system::TCS, Δ, bcs, bls=((noBL{1,1}(),noBL{1,2}()),(noBL{2,1}(),noBL{2,2}())), args...; kwargs...) where TCS<:CoordinateSystem
     OD1 = define_op{2,1,TCS}(N,Δ,bcs,bls; kwargs...)
     OD2 = define_op{2,2,TCS}(N,Δ,bcs,bls; kwargs...)
     ∇₁² = diff_op(OD1,args...)
     ∇₂² = diff_op(OD2,args...)
+    return OD1
     return sparse(∇₁², ∇₂²), (OD1,OD2)
 end
-function laplacian{DIM}(N, coordinate_system::Type{TCS}, Δ, bcs, bls=ezbl(:n), args...; kwargs...) where {DIM,TCS<:CoordinateSystem}
+function laplacian{DIM}(N, coordinate_system::TCS, Δ, bcs, bls=((noBL{1,1}(),noBL{1,2}()),(noBL{2,1}(),noBL{2,2}())), args...; kwargs...) where {DIM,TCS<:CoordinateSystem}
     N = DIM==1 ? (N[1],1) : (1,N[2])
     OD = define_op{2,DIM,TCS}(N,Δ,bcs,bls; kwargs...)
     ∇² = diff_op(OD,args...)
@@ -40,7 +40,6 @@ abstract type AbstractPolarity end
 struct Backward<:AbstractPolarity end
 struct Forward<:AbstractPolarity end
 struct Central<:AbstractPolarity end
-
 
 struct OperatorDefinition{ORD,DIM,TCS,TBC11,TBC12,TBC21,TBC22,TBL11,TBL12,TBL21,TBL22,TH1,TH2,TF,POL}
     N::NTuple{2,Int}
@@ -58,9 +57,8 @@ struct OperatorDefinition{ORD,DIM,TCS,TBC11,TBC12,TBC21,TBC22,TBL11,TBL12,TBL21,
     OperatorDefinition{ORD,DIM,CS}(N,Δ,bcs; kwargs...) where {ORD,DIM,CS} = OperatorDefinition{ORD,DIM,CS}(N,_oc_Δ(Δ),_oc_bcs(bcs),((noBL{1,1}(),noBL{1,2}()),(noBL{2,1}(),noBL{2,2}())); kwargs...)
     OperatorDefinition{ORD,DIM,CS}(N,Δ,bcs,bls; kwargs...) where {ORD,DIM,CS} = OperatorDefinition{ORD,DIM,CS}(N,_oc_Δ(Δ),_oc_bcs(bcs),_oc_bls(bls); kwargs...)
     function OperatorDefinition{ORD,DIM,CS}(N,Δ::Tuple{Tuple{Float64,Float64},Tuple{Float64,Float64}},bcs::Tuple{Tuple,Tuple},bls::Tuple{Tuple,Tuple}; kwargs...) where {ORD,DIM,CS,TD}
-
-        bc1_bool = typeof(bcs[1][1])<:PeriodicBC && typeof(bcs[1][2])<:PeriodicBC
-        bc2_bool = typeof(bcs[2][1])<:PeriodicBC && typeof(bcs[2][2])<:PeriodicBC
+        bc1_bool = typeof(bcs[1][1])<:FloquetBC && typeof(bcs[1][2])<:FloquetBC
+        bc2_bool = typeof(bcs[2][1])<:FloquetBC && typeof(bcs[2][2])<:FloquetBC
         if (bc1_bool || bc2_bool)
             lattice = haskey(kwargs,:lattice) ? kwargs[:lattice] : BravaisLattice()
         else
@@ -147,6 +145,7 @@ end
 _oc_bls(bls::Tuple{Tuple,Tuple}) = bls
 struct define_op{ORD,DIM,CS} end
 
+
 """
     define_op{ORD,DIM,CS}(args...; kwargs...)
 """
@@ -206,8 +205,8 @@ struct OperatorConstructor{ORD,DIM,CS,TBL1,TBL2,TBK,TB1,TB2,TOD}
 
         bulk_rows_on_site = 2:N[DIM]-1
         bulk_rows_nn = 1:N[DIM]-1
-        bnd1_rows = 1
-        bnd2_rows = N[DIM]
+        bnd1_rows = [1]
+        bnd2_rows = [N[DIM]]
         rows = vcat(bulk_rows_on_site,bulk_rows_nn,bulk_rows_nn.+1,bnd1_rows,bnd2_rows)
         cols = vcat(bulk_rows_on_site,bulk_rows_nn.+1,bulk_rows_nn,bnd1_rows,bnd2_rows)
         vals = get_vals(OC,args...)
@@ -229,8 +228,8 @@ struct OperatorConstructor{ORD,DIM,CS,TBL1,TBL2,TBK,TB1,TB2,TOD}
 
     # same dims, side=1
     function (OC::OperatorConstructor{_1,DIM,CS,_3,_4,_5,_6,_7,_8})(BC::AbstractBC{DIM,1},args...) where {_1,DIM,CS,_3,_4,_5,_6,_7,_8}
-        if typeof(BC)<:PeriodicBC
-            @assert length(args)==4 "only $(length(args)) arguments passed. PeriodicBC necessitates 4 args: k, ka, kb, ind"
+        if typeof(BC)<:FloquetBC
+            @assert length(args)==4 "only $(length(args)) arguments passed. FloquetBC necessitates 4 args: k, ka, kb, ind"
             # ind_flag = args[4]==0 ? false : true
             # ind_flag ? nothing : args[4]=1
             # ind = args[4]
@@ -244,7 +243,6 @@ struct OperatorConstructor{ORD,DIM,CS,TBL1,TBL2,TBK,TB1,TB2,TOD}
         vals = get_vals(OC,BC,args...)
         rcv = RowColVal(OC.N)
         rcv = rcv.(i1, j1, i2, j2, vals)
-
         N = OC.N
         if CS<:Polar && DIM==2
             rf = OC.definition.x[1] .+ OC.definition.f[1]/args[1]
@@ -255,6 +253,7 @@ struct OperatorConstructor{ORD,DIM,CS,TBL1,TBL2,TBK,TB1,TB2,TOD}
             S = sparse(I,prod(N),prod(N))
             RCV = rcv
         end
+
         for i ∈ eachindex(rcv)
             RCV[i] = RowColVal(N,S*sparse(rcv[i]))
         end
@@ -262,8 +261,8 @@ struct OperatorConstructor{ORD,DIM,CS,TBL1,TBL2,TBK,TB1,TB2,TOD}
     end
     # same dims, side=2
     function (OC::OperatorConstructor{_1,DIM,CS,_3,_4,_5,_6,_7,_8})(BC::AbstractBC{DIM,2},args...) where {_1,DIM,CS,_3,_4,_5,_6,_7,_8}
-        if typeof(BC)<:PeriodicBC
-            @assert length(args)==4 "only $(length(args)) arguments passed. PeriodicBC necessitates 4 args: k, ka, kb, ind"
+        if typeof(BC)<:FloquetBC
+            @assert length(args)==4 "only $(length(args)) arguments passed. FloquetBC necessitates 4 args: k, ka, kb, ind"
             args[4]==0 ? args=(args[1:3]...,1) : nothing
             ind = args[4]
             i1,j1,i2,j2 = BC.I1[ind],BC.J1[ind],BC.I2[ind],BC.J2[ind]
@@ -307,8 +306,8 @@ function get_vals(OC::OperatorConstructor{2,DIM,CS,TBL1,TBL2},args::Vararg{Numbe
     h = 1 .+ OC.definition.hd[DIM]/args[1]
     vals = (1 ./h)/OC.dx[DIM]^2
     bulk_on_site = -(vals[2:end-2] + vals[3:end-1])
-    bnd1_on_site = -(vals[1] + vals[2])
-    bnd2_on_site = -(vals[end-1] + vals[end])
+    bnd1_on_site = -[vals[1] + vals[2]]
+    bnd2_on_site = -[vals[end-1] + vals[end]]
     bulk_nn = vals[2:N[DIM]]
     return vcat(bulk_on_site,bulk_nn,bulk_nn,bnd1_on_site,bnd2_on_site)
 end
@@ -323,8 +322,8 @@ function get_vals(OC::OperatorConstructor{2,1,Polar,TBL1,TBL2},args::Vararg{Numb
 
     vals = (rf./h)/OC.dx[DIM]^2
     bulk_on_site = -(vals[2:end-2] + vals[3:end-1])
-    bnd1_on_site = -(vals[1] + vals[2])
-    bnd2_on_site = -(vals[end-1] + vals[end])
+    bnd1_on_site = -[vals[1] + vals[2]]
+    bnd2_on_site = -[vals[end-1] + vals[end]]
     bulk_nn = vals[2:N[DIM]]
     return vcat(bulk_on_site,bulk_nn,bulk_nn,bnd1_on_site,bnd2_on_site)
 end
@@ -344,7 +343,7 @@ function get_vals(OC::OperatorConstructor{2,DIM,CS,TBL1,TBL2},BC::T,args...) whe
     return [(rf./hd).*weights[1]/OC.dx[DIM]^2]
 end
 
-function get_vals(OC::OperatorConstructor{2,DIM,CS},BC::PeriodicBC{DIM,SIDE},k::Number,ka::Number,kb::Number,ind::Int) where {DIM,SIDE,CS}
+function get_vals(OC::OperatorConstructor{2,DIM,CS},BC::FloquetBC{DIM,SIDE},k::Number,ka::Number,kb::Number,ind::Int) where {DIM,SIDE,CS}
     @assert !(CS<:Polar && DIM==1) "combination DIM=1, CS=Polar, BC=Periodic not recognized"
     perp_ind = mod1(ind+1,2)
     I1, I2, J1, J2 = Int[], Int[], Int[], Int[]
@@ -476,7 +475,7 @@ function boundary_op(OD::OperatorDefinition{ORD,DIM,CS},OC::OperatorConstructor,
     OC = OC(OD.bcs[DIM][2],args...)
     rcv = vcat(OC.bnd1,OC.bnd2)
 
-    if typeof(OD.bcs[DIM][1])<:PeriodicBC
+    if typeof(OD.bcs[DIM][1])<:FloquetBC
         if args[4]==0
             fs1 = map(x->((k,_...)->OD.bcs[DIM][1](k,args[1],args[2],1)[x]),1:length(OC.bnd1))
             fs2 = map(x->((k,_...)->OD.bcs[DIM][2](k,args[1],args[2],1)[x]),1:length(OC.bnd2))
@@ -500,9 +499,7 @@ function boundary_op(OD::OperatorDefinition{ORD,DIM,CS},OC::OperatorConstructor,
     else
         s = RowColVal(OD.N,h,DIM)
     end
-
     return DifferentialOperator(rcv, fs, s)
 end
-
 
 end # module

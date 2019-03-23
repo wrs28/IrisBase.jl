@@ -15,11 +15,11 @@ add_pc_waveguides
 
 include("ConstructionToolsBase.jl")
 using .ConstructionToolsBase
-
-include("PhotonicCrystal.jl")
-using .PhotonicCrystal
-
-include("Waveguides.jl")
-using .Waveguides
+#
+# include("PhotonicCrystal.jl")
+# using .PhotonicCrystal
+#
+# include("Waveguides.jl")
+# using .Waveguides
 
 end #module

@@ -19,10 +19,17 @@ AbstractLocalBC,
 DirichletBC,
 NeumannBC,
 RobinBC,
-PeriodicBC,
+FloquetBC,
 MatchedBC,
-ezbc,
-ezbl
+isDirichlet,
+isNeumann,
+isMatched,
+isFloquet,
+isPML,
+iscPML,
+isnoBL
+# ezbc,
+# ezbl
 
 
 ################################################################################
@@ -41,6 +48,7 @@ mutable struct PML{DIM,SIDE,FIN}<:AbstractBL{DIM,SIDE}
     Δ::NTuple{2,NTuple{2,Float64}} # system size w/o pml
 
     # create PML{DIM,SIDE} empty
+    PML() = new{Union{},Union{},false}()
     PML{DIM,SIDE}() where {DIM,SIDE} = new{DIM,SIDE,false}(NaN,((NaN,NaN),(NaN,NaN)))
     # create PML{DIM,SIDE} initialized with depth
     PML{DIM,SIDE}(depth::Number) where {DIM,SIDE} = new{DIM,SIDE,true}(depth,((NaN,NaN),(NaN,NaN)))
@@ -61,6 +69,7 @@ mutable struct PML{DIM,SIDE,FIN}<:AbstractBL{DIM,SIDE}
     (pml::PML{1,SIDE,true})(x::Number,y::Number) where {SIDE} = conductivity_profile(x,pml.Δ,pml.depth,1,SIDE)
     (pml::PML{2,SIDE,true})(x::Number,y::Number) where {SIDE} = conductivity_profile(y,pml.Δ,pml.depth,2,SIDE)
 
+    Base.show(io::IO,::PML{Union{}}) = print("PML()")
     Base.show(io::IO,pml::PML{DIM,SIDE}) where {DIM,SIDE} = print("PML{$DIM,$SIDE}($(pml.depth))")
 end
 """
@@ -70,6 +79,7 @@ mutable struct cPML{DIM,SIDE,FIN}<:AbstractBL{DIM,SIDE}
     depth::Float64
     Δ::NTuple{2,NTuple{2,Float64}} # tuple of tuple of depths
 
+    cPML() = new{Union{},Union{},false}()
     cPML{DIM,SIDE}() where {DIM,SIDE} = new{DIM,SIDE,false}(NaN,((NaN,NaN),(NaN,NaN)))
     cPML{DIM,SIDE}(depth::Number) where {DIM,SIDE} = new{DIM,SIDE,true}(depth,((NaN,NaN),(NaN,NaN)))
     function cPML{DIM,SIDE}(depth::Number,Δ::NTuple{2,NTuple{2,Number}}) where {DIM,SIDE}
@@ -85,6 +95,7 @@ mutable struct cPML{DIM,SIDE,FIN}<:AbstractBL{DIM,SIDE}
     (cpml::cPML{1,SIDE,true})(x::Number,y::Number) where {SIDE} = conj_conductivity_profile(x,cpml.Δ,cpml.depth,1,SIDE)
     (cpml::cPML{2,SIDE,true})(x::Number,y::Number) where {SIDE} = conj_conductivity_profile(y,cpml.Δ,cpml.depth,2,SIDE)
 
+    Base.show(io::IO,::cPML{Union{}}) = print("cPML()")
     Base.show(io::IO,cpml::cPML{DIM,SIDE}) where {DIM,SIDE} = print("cPML{$DIM,$SIDE}($(cpml.depth))")
 end
 """
@@ -93,10 +104,12 @@ end
 mutable struct noBL{DIM,SIDE}<:AbstractBL{DIM,SIDE}
     depth::Float64
 
+    noBL() = new{Union{},Union{}}()
     noBL{DIM,SIDE}(args...) where {DIM,SIDE} = new{DIM,SIDE}(0)
     (nbl::noBL)(depth::Number,Δ::Tuple) = nbl
     (nbl::noBL)(Δ::Tuple) = nbl
     (::noBL)(x::Number,args...) = 0
+    Base.show(io::IO,::noBL{Union{}}) = print("noBL()")
     Base.show(io::IO,cpml::noBL{DIM,SIDE}) where {DIM,SIDE} = print("noBL{$DIM,$SIDE}")
 end
 
@@ -132,6 +145,7 @@ struct DirichletBC{DIM,SIDE,FIN,T,Tg,Tgf,TS} <: AbstractLocalBC{DIM,SIDE}
     weights::Array{Array{Float64,1},1}
     S::TS
 
+    DirichletBC() = new{Union{},Union{},false,Union{},Union{},Union{},Union{}}()
     DirichletBC{DIM,SIDE}() where {DIM,SIDE} = new{DIM,SIDE,false,Float64,Float64,typeof(identity),Union{}}(0.0,identity,(0,0),(0.0,0.0))
     DirichletBC{DIM,SIDE}(g::Tg) where {DIM,SIDE,Tg} = new{DIM,SIDE,false,Tg,Tg,typeof(identity),Union{}}(g,identity,(0,0),(0.0,0.0))
     DirichletBC{DIM,SIDE}(g::Function) where {DIM,SIDE} = new{DIM,SIDE,false,typeof(g),Float64,typeof(g),Union{}}(NaN,g,(0,0),(0.0,0.0))
@@ -180,6 +194,7 @@ struct DirichletBC{DIM,SIDE,FIN,T,Tg,Tgf,TS} <: AbstractLocalBC{DIM,SIDE}
 
     (dbc::DirichletBC{DIM,SIDE,true})(k::Number,args...) where {DIM,SIDE} = [1]
 
+    Base.show(io::IO,::DirichletBC{Union{},Union{},false}) = print("DirichletBC()")
     Base.show(io::IO,DBC::DirichletBC{DIM,SIDE,true}) where {DIM,SIDE} = print("DirichletBC{$DIM,$SIDE}")
     Base.show(io::IO,DBC::DirichletBC{DIM,SIDE,false}) where {DIM,SIDE} = print("DirichletBC{$DIM,$SIDE}")
     Base.show(io::IO,DBC::DirichletBC{DIM,SIDE,false,T}) where {DIM,SIDE,T<:Number} = print("DirichletBC{$DIM,$SIDE}(",fmt("2.1f",DBC.g),")")
@@ -201,6 +216,7 @@ struct NeumannBC{DIM,SIDE,FIN,T,Tg,Tgf,TS} <: AbstractLocalBC{DIM,SIDE}
     weights::Array{Array{Float64,1},1}
     S::TS
 
+    NeumannBC() = new{Union{},Union{},false,Union{},Union{},Union{},Union{}}()
     NeumannBC{DIM,SIDE}() where {DIM,SIDE} = new{DIM,SIDE,false,Float64,Float64,typeof(identity),Union{}}(0.0,identity,(0,0),(0.0,0.0))
     NeumannBC{DIM,SIDE}(g::Tg) where {DIM,SIDE,Tg} = new{DIM,SIDE,false,Tg,Tg,typeof(identity),Union{}}(g,identity,(0,0),(0.0,0.0))
     NeumannBC{DIM,SIDE}(g::Function) where {DIM,SIDE} = new{DIM,SIDE,false,typeof(g),Float64,typeof(g),Union{}}(NaN,g,(0,0),(0.0,0.0))
@@ -251,6 +267,7 @@ struct NeumannBC{DIM,SIDE,FIN,T,Tg,Tgf,TS} <: AbstractLocalBC{DIM,SIDE}
 
     (nbc::NeumannBC{DIM,SIDE,true})(k::Number,args...) where {DIM,SIDE} = [1]
 
+    Base.show(io::IO,::NeumannBC{Union{},Union{},false}) = print("NeumannBC()")
     Base.show(io::IO,::NeumannBC{DIM,SIDE,true}) where {DIM,SIDE} = print("NeumannBC{$DIM,$SIDE}")
     Base.show(io::IO,::NeumannBC{DIM,SIDE,false}) where {DIM,SIDE} = print("NeumannBC{$DIM,$SIDE}")
     Base.show(io::IO,NBC::NeumannBC{DIM,SIDE,false,T}) where {DIM,SIDE,T<:Number} = print("NeumannBC{$DIM,$SIDE}(",fmt("2.1f",NBC.g),")")
@@ -280,6 +297,7 @@ struct RobinBC{DIM,SIDE,FIN,TA,TB,TG,Ta,Tb,Tg,Taf,Tbf,Tgf,TW,TS} <: AbstractLoca
     weights::Array{Array{TW,1},1}
     S::TS
 
+    RobinBC() = new{Union{},Union{},false,Union{},Union{},Union{},Union{},Union{},Union{},Union{},Union{},Union{},Union{},Union{}}()
     RobinBC{DIM,SIDE}(α::Number,β::Number) where {DIM,SIDE} = RobinBC{DIM,SIDE}(α,β,zero(α*β))
     RobinBC{DIM,SIDE}(α::Function,β::Number) where {DIM,SIDE} = RobinBC{DIM,SIDE}(α,β,zero(α(1.)*β))
     RobinBC{DIM,SIDE}(α::Number,β::Function) where {DIM,SIDE} = RobinBC{DIM,SIDE}(α,β,zero(α*β(1.)))
@@ -343,6 +361,7 @@ struct RobinBC{DIM,SIDE,FIN,TA,TB,TG,Ta,Tb,Tg,Taf,Tbf,Tgf,TW,TS} <: AbstractLoca
 
     (rbc::RobinBC{DIM,SIDE,true})(k::Number,args...) where {DIM,SIDE} = [1]
 
+    Base.show(io::IO,::RobinBC{Union{},Union{},false,Union{},Union{},Union{},Union{}}) = print("RobinBC()")
     Base.show(io::IO,::RobinBC{DIM,SIDE,true}) where {DIM,SIDE} = print("RobinBC{$DIM,$SIDE}")
     Base.show(io::IO,::RobinBC{DIM,SIDE,false}) where {DIM,SIDE} = print("RobinBC{$DIM,$SIDE}")
     Base.show(io::IO,RBC::RobinBC{DIM,SIDE,false,TA,TB,TG}) where {DIM,SIDE} where {TA<:Number,TB<:Number,TG<:Number} = print("RobinBC{$DIM,$SIDE}($(RBC.α),$(RBC.β),$(RBC.g))")
@@ -370,10 +389,11 @@ function _αβg(f::Number,DIM,N;kwargs...)
 end
 _αβg(x) = x
 
+
 """
-    pbc = PeriodicBC{DIM,SIDE}(N[, lattice=BravaisLattice(a=N[1],b=N[2])])
+    pbc = FloquetBC{DIM,SIDE}(N[, lattice=BravaisLattice(a=N[1],b=N[2])])
 """
-struct PeriodicBC{DIM,SIDE,FIN} <: AbstractBC{DIM,SIDE}
+struct FloquetBC{DIM,SIDE,FIN} <: AbstractBC{DIM,SIDE}
     lattice::BravaisLattice
     N::NTuple{2,Int}
     I1::Array{Array{Array{Int,1},1},1}
@@ -383,9 +403,10 @@ struct PeriodicBC{DIM,SIDE,FIN} <: AbstractBC{DIM,SIDE}
     weights::Array{Array{Array{Float64,1},1},1}
     shifts::Array{Array{Int,1},1}
 
-    PeriodicBC{DIM,SIDE}() where {DIM,SIDE} = new{DIM,SIDE,false}()
-    PeriodicBC{DIM,SIDE}(lattice::BravaisLattice; kwargs...) where {DIM,SIDE} = new{DIM,SIDE,false}(lattice,(0,0))
-    function PeriodicBC{DIM,SIDE}(lattice,N; kwargs...) where {DIM,SIDE}
+    FloquetBC() = new{Union{},Union{},false}()
+    FloquetBC{DIM,SIDE}() where {DIM,SIDE} = new{DIM,SIDE,false}()
+    FloquetBC{DIM,SIDE}(lattice::BravaisLattice; kwargs...) where {DIM,SIDE} = new{DIM,SIDE,false}(lattice,(0,0))
+    function FloquetBC{DIM,SIDE}(lattice,N; kwargs...) where {DIM,SIDE}
 
         @assert !(0 ∈ N) "improperly initialized N=$N"
 
@@ -531,23 +552,24 @@ struct PeriodicBC{DIM,SIDE,FIN} <: AbstractBC{DIM,SIDE}
         return new{DIM,SIDE,true}(lattice, Tuple(N), i1, j1, i2, j2, v, [Naa, Nbb])
     end
 
-    (pbc::PeriodicBC{DIM,SIDE,false})(N; kwargs...) where {DIM,SIDE} = PeriodicBC{DIM,SIDE}(pbc.lattice,N; kwargs...)
-    (pbc::PeriodicBC{DIM,SIDE,false})(lattice::BravaisLattice, N; kwargs...) where {DIM,SIDE} = PeriodicBC{DIM,SIDE}(lattice,N; kwargs...)
-    (pbc::PeriodicBC{DIM,SIDE,true})(args...;kwargs...) where {DIM,SIDE} = pbc
+    (pbc::FloquetBC{DIM,SIDE,false})(N; kwargs...) where {DIM,SIDE} = FloquetBC{DIM,SIDE}(pbc.lattice,N; kwargs...)
+    (pbc::FloquetBC{DIM,SIDE,false})(lattice::BravaisLattice, N; kwargs...) where {DIM,SIDE} = FloquetBC{DIM,SIDE}(lattice,N; kwargs...)
+    (pbc::FloquetBC{DIM,SIDE,true})(args...;kwargs...) where {DIM,SIDE} = pbc
 
-    function (pbc::PeriodicBC{DIM,SIDE,true})(k::Number,ka::Number,kb::Number,ind::Int) where {DIM,SIDE}
+    function (pbc::FloquetBC{DIM,SIDE,true})(k::Number,ka::Number,kb::Number,ind::Int) where {DIM,SIDE}
         (K,k) = ind==1 ? (ka,kb) : (kb,ka)
         (R,r) = ind==1 ? (pbc.lattice.a,pbc.lattice.b) : (pbc.lattice.b,pbc.lattice.a)
         if !isinf(R)
             ϕ = pbc.shifts[ind]*K*R
         else
-            ϕ = 0
+            ϕ = zeros(Float64,size(pbc.shifts[ind]))
         end
         return exp.(-1im*ϕ)
     end
 
-    function Base.show(io::IO,PBC::PeriodicBC{DIM,SIDE,FIN}) where {FIN,DIM,SIDE}
-        print("PeriodicBC{$DIM,$SIDE}")
+    Base.show(io::IO,::FloquetBC{Union{},Union{},false}) = print("FloquetBC()")
+    function Base.show(io::IO,PBC::FloquetBC{DIM,SIDE,FIN}) where {FIN,DIM,SIDE}
+        print("FloquetBC{$DIM,$SIDE}")
         try
             print(",v1=",fmt("3.1f",PBC.lattice.a),"∠",fmt("3.1f",PBC.lattice.α*180/π))
             print(",v2=",fmt("3.1f",PBC.lattice.b),"∠",fmt("3.1f",PBC.lattice.β*180/π))
@@ -556,6 +578,7 @@ struct PeriodicBC{DIM,SIDE,FIN} <: AbstractBC{DIM,SIDE}
         end
     end
 end
+
 
 """
     MatchedBC{Polar}(dim, side, N)
@@ -575,11 +598,8 @@ struct MatchedBC{DIM,SIDE,CS,TBC1,TBC2,FIN} <: AbstractBC{DIM,SIDE}
     QNs::Array{Int,1}
     direction::Array{Int,1}
 
-    # MatchedBC{DIM,SIDE}() where {DIM,SIDE} = new{DIM,SIDE,Union{},Union{},Union{},false}()
-    # MatchedBC{DIM,SIDE,CS}() where {DIM,SIDE,CS} = new{DIM,SIDE,CS,Union{},Union{},false}()
+    MatchedBC() = new{Union{},Union{},Union{},Union{},Union{},false}()
     MatchedBC{DIM,SIDE}(outgoing_qns, incoming_qns; kwargs...) where {DIM,SIDE} = new{DIM,SIDE,Union{},Union{},Union{},false}(outgoing_qns, incoming_qns)
-    # MatchedBC{DIM,SIDE,CS}(outgoing_qns, incoming_qns; kwargs...) where {DIM,SIDE,CS} = new{DIM,SIDE,CS,Union{},Union{},false}(outgoing_qns, incoming_qns)
-    # MatchedBC{DIM,SIDE}(outgoing_qns, incoming_qns, N, coordinate_system::Type{CS}; kwargs...) where {DIM,SIDE,CS} = MatchedBC{DIM,SIDE,CS}(outgoing_qns,incoming_qns,N;kwargs...)
 
     # MatchedBC for 2-dim free space polar
     function MatchedBC{1,2,Polar}(outgoing_qns, incoming_qns, N; kwargs...)
@@ -596,15 +616,15 @@ struct MatchedBC{DIM,SIDE,CS,TBC1,TBC2,FIN} <: AbstractBC{DIM,SIDE}
         q_out = length(outgoing_qns)
         q_in = length(incoming_qns)
 
+        weights = Array{ComplexF64}(undef,(q_out+q_in)*N[2]^2)
+        M  = Array{Int}(undef,q_out+q_in)
+        direction = Array{Int}(undef,q_out+q_in)
         I1 = Array{Int}(undef,(q_out+q_in)*N[2]^2)
         I2 = Array{Int}(undef,(q_out+q_in)*N[2]^2)
         J1 = Array{Int}(undef,(q_out+q_in)*N[2]^2)
         J2 = Array{Int}(undef,(q_out+q_in)*N[2]^2)
         M_inds = Array{Int}(undef,(q_out+q_in)*N[2]^2)
         M_subinds = Array{Array{Int,1},1}(undef,(q_out+q_in))
-        weights = Array{ComplexF64}(undef,(q_out+q_in)*N[2]^2)
-        M  = Array{Int}(undef,q_out+q_in)
-        direction = Array{Int}(undef,q_out+q_in)
         idx = 1
         midx = 1
         for m ∈ outgoing_qns
@@ -615,7 +635,6 @@ struct MatchedBC{DIM,SIDE,CS,TBC1,TBC2,FIN} <: AbstractBC{DIM,SIDE}
                 J2[idx] = j
                 weights[idx] = dθ*exp(complex(0,m*(i-j)*dθ))/2π
                 M_inds[idx] = midx
-
                 idx += 1
             end
             M[midx] = m
@@ -625,7 +644,7 @@ struct MatchedBC{DIM,SIDE,CS,TBC1,TBC2,FIN} <: AbstractBC{DIM,SIDE}
         end
         qidx = midx-1
         for m ∈ incoming_qns
-            for i ∈ 1:N[2], j ∈ 1:N[2]
+        for i ∈ 1:N[2], j ∈ 1:N[2]
                 I1[idx] = N[1]
                 J1[idx] = i
                 I2[idx] = N[1]
@@ -670,49 +689,28 @@ struct MatchedBC{DIM,SIDE,CS,TBC1,TBC2,FIN} <: AbstractBC{DIM,SIDE}
         q_out = length(outgoing_qns)
         q_in = length(incoming_qns)
 
+        M  = Array{Int}(undef,q_out+q_in)
+        direction = Array{Int}(undef,q_out+q_in)
+        weights = Array{ComplexF64}(undef,(q_out+q_in)*N[2]^2)
         I1 = Array{Int}(undef,(q_out+q_in)*N[2]^2)
         I2 = Array{Int}(undef,(q_out+q_in)*N[2]^2)
         J1 = Array{Int}(undef,(q_out+q_in)*N[2]^2)
         J2 = Array{Int}(undef,(q_out+q_in)*N[2]^2)
         M_inds = Array{Int}(undef,(q_out+q_in)*N[2]^2)
         M_subinds = Array{Array{Int,1},1}(undef,(q_out+q_in))
-        weights = Array{ComplexF64}(undef,(q_out+q_in)*N[2]^2)
-        M  = Array{Int}(undef,q_out+q_in)
-        direction = Array{Int}(undef,q_out+q_in)
         idx = 1
         midx = 1
-        if BC1<:DirichletBC && BC2<:DirichletBC
-
-        elseif BC1<:DirichletBC && BC2<:NeumannBC
-            am = sqrt(2/L)/2im
-            bm = -sqrt(2/L)/2im
-        elseif BC1<:NeumannBC   && BC2<:DirichletBC
-            am = sqrt(2/L)/2im
-            bm = -sqrt(2/L)/2im
-        elseif BC1<:DirichletBC && BC2<:NeumannBC
-            am = sqrt(2/L)/2im
-            bm = -sqrt(2/L)/2im
-        elseif BC1<:NeumannBC   && BC2<:NeumannBC
-            am = sqrt(2/L)/2im
-            bm = -sqrt(2/L)/2im
-        elseif BC1<:PeriodicBC  && BC2<:PeriodicBC
-            am = sqrt(2/L)/2im
-            bm = -sqrt(2/L)/2im
-        else
-            throw(Exception("unrecognized transverse boundary condition combination $BC1 & $BC2"))
-        end
         for m ∈ outgoing_qns
+            am, bm, km = abkm(m,L,BC1,BC2)
             for i ∈ 1:N[2], j ∈ 1:N[2]
                 I1[idx] = N[1]
                 J1[idx] = i
                 I2[idx] = N[1]
                 J2[idx] = j
-                am, bm, km = abkm(m,L,BC1,BC2)
                 ϕi = am*exp(1im*km*DX*i)+bm*exp(-1im*km*DX*i)
                 ϕj = am*exp(1im*km*DX*j)+bm*exp(-1im*km*DX*j)
                 weights[idx] = DX*ϕi*ϕj
                 M_inds[idx] = midx
-
                 idx += 1
             end
             M[midx] = m
@@ -722,12 +720,12 @@ struct MatchedBC{DIM,SIDE,CS,TBC1,TBC2,FIN} <: AbstractBC{DIM,SIDE}
         end
         qidx = midx-1
         for m ∈ incoming_qns
+            am, bm, km = abkm(m,L,BC1,BC2)
             for i ∈ 1:N[2], j ∈ 1:N[2]
                 I1[idx] = N[1]
                 J1[idx] = i
                 I2[idx] = N[1]
                 J2[idx] = j
-                am, bm, km = abkm(m,L,BC1,BC2)
                 ϕi = am*exp(1im*km*DX*i)+bm*exp(-1im*km*DX*i)
                 ϕj = am*exp(1im*km*DX*j)+bm*exp(-1im*km*DX*j)
                 weights[idx] = DX*ϕi*ϕj
@@ -753,42 +751,10 @@ struct MatchedBC{DIM,SIDE,CS,TBC1,TBC2,FIN} <: AbstractBC{DIM,SIDE}
         end
         return new{DIM,SIDE,Cartesian,BC1,BC2,true}(outgoing_qns, incoming_qns, Tuple(N), Tuple(dx), Tuple(xmin), xmax, i1, j1, i2, j2, v, M, direction)
     end
-    # coefficients and transverse momentum for Cartesian guided mode system
-    function abkm(m::Int,L,bc1::Type{BC1},bc2::Type{BC2}) where {BC1,BC2}
-        if BC1<:DirichletBC && BC2<:DirichletBC
-            am = sqrt(2/L)/2im
-            bm = -sqrt(2/L)/2im
-            km = m*π/L
-        elseif BC1<:DirichletBC && BC2<:NeumannBC
-            am = sqrt(2/L)/2im
-            bm = -sqrt(2/L)/2im
-            km = m*π/L
-        elseif BC1<:NeumannBC   && BC2<:DirichletBC
-            am = sqrt(2/L)/2im
-            bm = -sqrt(2/L)/2im
-            km = m*π/L
-        elseif BC1<:DirichletBC && BC2<:NeumannBC
-            am = sqrt(2/L)/2im
-            bm = -sqrt(2/L)/2im
-            km = m*π/L
-        elseif BC1<:NeumannBC   && BC2<:NeumannBC
-            am = sqrt(2/L)/2im
-            bm = -sqrt(2/L)/2im
-            km = m*π/L
-        elseif BC1<:PeriodicBC  && BC2<:PeriodicBC
-            am = sqrt(2/L)/2im
-            bm = -sqrt(2/L)/2im
-            km = m*π/L
-        else
-            throw(Exception("unrecognized transverse boundary condition combination $BC1 & $BC2"))
-        end
-        return am, bm, km
-    end
 
     # convenience constructors for MatchedBC, starting from partially initialized
-    # (mbc::MatchedBC{DIM,SIDE,_1,_2,_3,false})(N, coordinate_system::Type{CS}, args...; kwargs...) where {DIM,SIDE,CS,_1,_2,_3} = MatchedBC{DIM,SIDE,CS}(mbc.outgoing_qns,mbc.incoming_qns,N; kwargs...)
-    (mbc::MatchedBC{DIM,SIDE,_1,_2,_3,false})(N, coordinate_system::Type{CS}, bc1::Type{BC1}, bc2::Type{BC2}, args...; kwargs...) where {DIM,SIDE,_1,_2,_3,CS,BC1,BC2} = MatchedBC{DIM,SIDE,CS,BC1,BC2}(mbc.outgoing_qns,mbc.incoming_qns,N; kwargs...)
-    # (mbc::MatchedBC{DIM,SIDE,CS,BC1,BC2,true})(args...; kwargs...) where {DIM,SIDE,CS,BC1,BC2} = mbc
+    # (mbc::MatchedBC{DIM,SIDE,_1,_2,_3,false})(N, coordinate_system::Type{CS}, bc1::Type{BC1}, bc2::Type{BC2}, args...; kwargs...) where {DIM,SIDE,_1,_2,_3,CS,BC1,BC2} = MatchedBC{DIM,SIDE,CS,BC1,BC2}(mbc.outgoing_qns,mbc.incoming_qns,N; kwargs...)
+    (mbc::MatchedBC{DIM,SIDE,CS,BC1,BC2,false})(N) where {DIM,SIDE,CS,BC1,BC2}= MatchedBC{DIM,SIDE,CS,BC1,BC2}(mbc.outgoing_qns,mbbc.incoming_qns,N)
 
     # longitudinal propagator for free polar
     function (MBC::MatchedBC{1,2,Polar})(k,args...)
@@ -808,7 +774,12 @@ struct MatchedBC{DIM,SIDE,CS,TBC1,TBC2,FIN} <: AbstractBC{DIM,SIDE}
     end
     # longitudinal propagator for waveguide cartesian
     function (MBC::MatchedBC{DIM,SIDE,Cartesian,BC1,BC2})(k,args...) where {DIM,SIDE,BC1,BC2}
-        am, bm, km = abkm.(MBC.QNs,(MBC.xmax.-MBC.xmin)[mod1(DIM+1,2)],BC1,BC2)
+        am = Array{ComplexF64}(undef,length(MBC.QNs))
+        bm = Array{ComplexF64}(undef,length(MBC.QNs))
+        km = Array{Float64}(undef,length(MBC.QNs))
+        for i ∈ eachindex(MBC.QNs)
+            am[i], bm[i], km[i] = abkm.(MBC.QNs[i],(MBC.xmax.-MBC.xmin)[mod1(DIM+1,2)],BC1,BC2)
+        end
         β = @. MBC.direction*sqrt(k^2-km^2 + 0.0im)
         βdx = β*MBC.dx[mod1(DIM+1,2)]
         num = 1 .+ 1im*βdx/2
@@ -817,18 +788,48 @@ struct MatchedBC{DIM,SIDE,CS,TBC1,TBC2,FIN} <: AbstractBC{DIM,SIDE}
     end
 
     # pretty printing for MatchedBC
+    Base.show(io::IO,::MatchedBC{Union{},Union{}}) = print("MatchedBC()")
     Base.show(io::IO,::MatchedBC{DIM,SIDE}) where {DIM,SIDE} = print("MatchedBC{$DIM,$SIDE}")
-    Base.show(io::IO,::MatchedBC{DIM,SIDE,CS,FIN}) where {DIM,SIDE,CS<:CoordinateSystem,FIN} = print("MatchedBC{$DIM,$SIDE,$CS}")
+    Base.show(io::IO,::MatchedBC{DIM,SIDE,CS}) where {DIM,SIDE,CS<:CoordinateSystem} = print("MatchedBC{$DIM,$SIDE,$CS}")
 end
-
-
+# coefficients and transverse momentum for Cartesian guided mode system
+function abkm(m::Int,L::Real,bc1::Type{BC1},bc2::Type{BC2}) where {BC1,BC2}
+    if BC1<:DirichletBC && BC2<:DirichletBC
+        am = sqrt(2/L)/2im
+        bm = -sqrt(2/L)/2im
+        km = m*π/L
+    elseif BC1<:DirichletBC && BC2<:NeumannBC
+        am = sqrt(2/L)/2im
+        bm = -sqrt(2/L)/2im
+        km = m*π/L
+    elseif BC1<:NeumannBC   && BC2<:DirichletBC
+        am = sqrt(2/L)/2im
+        bm = -sqrt(2/L)/2im
+        km = m*π/L
+    elseif BC1<:DirichletBC && BC2<:NeumannBC
+        am = sqrt(2/L)/2im
+        bm = -sqrt(2/L)/2im
+        km = m*π/L
+    elseif BC1<:NeumannBC   && BC2<:NeumannBC
+        am = sqrt(2/L)/2im
+        bm = -sqrt(2/L)/2im
+        km = m*π/L
+    elseif BC1<:FloquetBC  && BC2<:FloquetBC
+        am = sqrt(2/L)/2im
+        bm = -sqrt(2/L)/2im
+        km = m*π/L
+    else
+        throw(Exception("unrecognized transverse boundary condition combination $BC1 & $BC2"))
+    end
+    return am, bm, km
+end
 
 #################### DIM/SIDE UTILITIES #####################
 get_bc_type(::DirichletBC) = Float64
 get_bc_type(::NeumannBC) = Float64
 get_bc_type(::RobinBC{DIM,SIDE,FIN,TW}) where {FIN,DIM,SIDE,TW<:Array} = eltype(TW)
 get_bc_type(::RobinBC{DIM,SIDE,FIN,TW}) where {FIN,DIM,SIDE,TW} = TW
-get_bc_type(::PeriodicBC) = ComplexF64
+get_bc_type(::FloquetBC) = ComplexF64
 get_bc_type(::MatchedBC) = ComplexF64
 
 get_dim_side(x::Union{Tuple,Array}) = map(get_dim_side,x)
@@ -848,10 +849,15 @@ apply_args(x::Tuple, args...;kwargs...) = map(x->apply_args(x, args...;kwargs...
 # this next one is to help with type stability in the recursion
 apply_args(x::Tuple{Tuple,Tuple}, args...;kwargs...) = map(x->apply_args(x, args...;kwargs...),x)
 apply_args(x, args...;kwargs...) = nothing
-apply_args(x::AbstractLocalBC, args...; N, kwargs...) = x(N; kwargs...)
-apply_args(x::PeriodicBC{DIM,SIDE,false}, args...; lattice, N, kwargs...) where {DIM,SIDE} = x(lattice, N; kwargs...)
-apply_args(x::PeriodicBC{DIM,SIDE,true}, args...; lattice, N, kwargs...) where {DIM,SIDE}= x
-apply_args(x::MatchedBC{DIM,SIDE,CS1,BC1,BC2,false}, coordinate_system::Type{CS2}, bc1::Type{BC3}, bc2::Type{BC4}, args...; N, kwargs...) where {DIM,SIDE,CS1,CS2<:CoordinateSystem,BC1,BC2,BC3,BC4} = x(N, CS2, BC3, BC4; kwargs...)
+apply_args(x::AbstractLocalBC, args...; N, kwargs...) =
+    x(N; kwargs...)
+apply_args(x::FloquetBC{DIM,SIDE,false}, args...; lattice, N, kwargs...) where {DIM,SIDE} =
+    x(lattice, N; kwargs...)
+apply_args(x::FloquetBC{DIM,SIDE,true}, args...; lattice, N, kwargs...) where {DIM,SIDE}= x
+apply_args(x::MatchedBC{DIM,SIDE,CS1,BC1,BC2,false},
+    coordinate_system::CS2, bc1::BC3, bc2::BC4, args... ;
+    N, kwargs...) where {DIM,SIDE,CS1,CS2<:CoordinateSystem,BC1,BC2,BC3,BC4} =
+        MatchedBC{DIM,SIDE,CS2,BC3,BC4}(x.outgoing_qns, x.incoming_qns, N; kwargs...)
 apply_args(x::MatchedBC{DIM,SIDE,CS1,BC1,BC2,true}, args...; N, kwargs...) where {DIM,SIDE,CS1,BC1,BC2} = x
 # apply_args(x::AbstractBL, args...; Δ, kwargs...) = x(Δ)
 apply_args(x::noBL, args...; kwargs...) = x
@@ -867,95 +873,149 @@ reorder_dim(bc) = (bc,)
 
 reorder(bcs...) = reorder_dim(reorder_dim(reorder_side(bcs...)))
 
-#################### EZBC/EZBL UTILITY ###########################
+
+
 """
-    bcs = ezbc(bc1, bc2, N=[0,0])
-    bcs = ezbc(bcs, N=[0,0])
-
-wrapper for easy construction of boundary conditions, `bc1` for dimension 1, `bc2` for dimension 2.
-
-`bc1`, `bc2` can by specified as symbols or arrays of symbols. If symbol, it applies to both boundaries in that dimension.
-
-See also: [`RobinBoundaryCondition`](@ref), [`PeriodicBoundaryCondition`](@ref)
+    isDirichlet(bc)
 """
-ezbc(bc1::Symbol,bc2; kwargs...) = ezbc([bc1, bc1],bc2; kwargs...)
-ezbc(bc1,bc2::Symbol; kwargs...) =  ezbc(bc1, [bc2,bc2]; kwargs...)
-ezbc(bc1::Symbol, bc2::Symbol; kwargs...) = ezbc([bc1, bc1], [bc2, bc2]; kwargs...)
-ezbc(bc::Symbol; kwargs...) = ezbc(bc,bc; kwargs...)
-function ezbc(bc1,bc2; kwargs...)
-
-    dirichlet = [:d,:D,:dirichlet,:Dirichlet]
-    neumann = [:n,:N,:neumann,:Neumann]
-    robin = [:r,:R,:robin,:Robin]
-    periodic = [:p,:P,:periodic,:Periodic,:floquet,:Floquet]
-    matched = [:m,:M,:matched,:Matched]
-    valid_names = vcat(dirichlet,neumann,robin,periodic,matched)
-
-    @assert bc1[1] ∈ valid_names "unrecognized boundary condition for dim=1, side=1"
-    @assert bc1[2] ∈ valid_names "unrecognized boundary condition for dim=1, side=2"
-    @assert bc2[1] ∈ valid_names "unrecognized boundary condition for dim=2, side=1"
-    @assert bc2[2] ∈ valid_names "unrecognized boundary condition for dim=2, side=2"
-
-    bc1[1] ∈ dirichlet ? BC11 = DirichletBC{1,1}() : nothing
-    bc1[1] ∈ neumann ? BC11 = NeumannBC{1,1}() : nothing
-    bc1[1] ∈ matched ? BC11 = MatchedBC{1,1}(kwargs[:outgoing_qns],kwargs[:incoming_qns]) : nothing
-    bc1[1] ∈ periodic ? BC11 = PeriodicBC{1,1}(kwargs[:lattice]) : nothing
-    bc1[1] ∈ robin ? BC11 = RobinBC{1,1}(kwargs[:α],kwargs[:β]) : nothing
-
-    bc1[2] ∈ dirichlet ? BC12 = DirichletBC{1,2}() : nothing
-    bc1[2] ∈ neumann ? BC12 = NeumannBC{1,2}() : nothing
-    bc1[2] ∈ matched ? BC12 = MatchedBC{1,2}(kwargs[:outgoing_qns],kwargs[:incoming_qns]) : nothing
-    bc1[2] ∈ periodic ? BC12 = PeriodicBC{1,2}(kwargs[:lattice]) : nothing
-    bc1[2] ∈ robin ? BC12 = RobinBC{1,2}(kwargs[:α],kwargs[:β]) : nothing
-
-    bc2[1] ∈ dirichlet ? BC21 = DirichletBC{2,1}() : nothing
-    bc2[1] ∈ neumann ? BC21 = NeumannBC{2,1}() : nothing
-    bc2[1] ∈ matched ? BC21 = MatchedBC{2,1}(kwargs[:outgoing_qns],kwargs[:incoming_qns]) : nothing
-    bc2[1] ∈ periodic ? BC21 = PeriodicBC{2,1}(kwargs[:lattice]) : nothing
-    bc2[1] ∈ robin ? BC21 = RobinBC{2,1}(kwargs[:α],kwargs[:β]) : nothing
-
-    bc2[2] ∈ dirichlet ? BC22 = DirichletBC{2,2}() : nothing
-    bc2[2] ∈ neumann ? BC22 = NeumannBC{2,2}() : nothing
-    bc2[2] ∈ matched ? BC22 = MatchedBC{2,2}(kwargs[:outgoing_qns],kwargs[:incoming_qns]) : nothing
-    bc2[2] ∈ periodic ? BC22 = PeriodicBC{2,2}(kwargs[:lattice]) : nothing
-    bc2[2] ∈ robin ? BC22 = RobinBC{2,2}(kwargs[:α],kwargs[:β]) : nothing
-
-    return ((BC11,BC12),(BC21,BC22))
-end
+isDirichlet(bc::DirichletBC) = true
+isDirichlet(bc) = false
 
 
-ezbl(bl1::Symbol,bl2; kwargs...) = ezbl([bl1, bl1],bl2; kwargs...)
-ezbl(bl1,bl2::Symbol; kwargs...) = ezbl(bl1, [bl2,bl2]; kwargs...)
-ezbl(bl1::Symbol, bl2::Symbol; kwargs...) = ezbl([bl1, bl1], [bl2, bl2]; kwargs...)
-ezbl(bl::Symbol; kwargs...) = ezbl(bl,bl; kwargs...)
-function ezbl(bl1,bl2; kwargs...)
+"""
+    isNeumann(bc)
+"""
+isNeumann(bc::NeumannBC) = true
+isNeumann(bc) = false
 
-    pml = [:p,:P,:pml,:PML,:pml_out,:PML_OUT,:PML_out]
-    cpml = [:c,:C,:cp,:CP,:cP,:cpml,:cPML,:conj_pml,:conj_PML,:pml_in,:PML_IN,:PML_in]
-    nobl = [:n,:none,:N,:None,:NONE,:no_bl]
-    valid_names = vcat(pml,cpml,nobl)
-    @assert bl1[1] ∈ valid_names "unrecognized boundary layer for dim=1, side=1"
-    @assert bl1[2] ∈ valid_names "unrecognized boundary layer for dim=1, side=2"
-    @assert bl2[1] ∈ valid_names "unrecognized boundary layer for dim=2, side=1"
-    @assert bl2[2] ∈ valid_names "unrecognized boundary layer for dim=2, side=2"
 
-    bl1[1] ∈ pml ? BL11 = PML{1,1}() : nothing
-    bl1[1] ∈ cpml ? BL11 = cPML{1,1}() : nothing
-    bl1[1] ∈ nobl ? BL11 = noBL{1,1}() : nothing
+"""
+    isMatched(bc)
+"""
+isMatched(bc::MatchedBC) = true
+isMatched(bc) = false
 
-    bl1[2] ∈ pml ? BL12 = PML{1,2}() : nothing
-    bl1[2] ∈ cpml ? BL12 = cPML{1,2}() : nothing
-    bl1[2] ∈ nobl ? BL12 = noBL{1,2}() : nothing
 
-    bl2[1] ∈ pml ? BL21 = PML{2,1}() : nothing
-    bl2[1] ∈ cpml ? BL21 = cPML{2,1}() : nothing
-    bl2[1] ∈ nobl ? BL21 = noBL{2,1}() : nothing
+"""
+    isFloquet(bc)
+"""
+isFloquet(bc::FloquetBC) = true
+isFloquet(bc) = false
 
-    bl2[2] ∈ pml ? BL22 = PML{2,2}() : nothing
-    bl2[2] ∈ cpml ? BL22 = cPML{2,2}() : nothing
-    bl2[2] ∈ nobl ? BL22 = noBL{2,2}() : nothing
 
-    return ((BL11,BL12),(BL21,BL22))
-end
+"""
+    isPML(bl)
+"""
+isPML(bl::PML) = true
+isPML(bl) = false
+
+
+"""
+    iscPML(bl)
+"""
+iscPML(bl::cPML) = true
+iscPML(bl) = false
+
+
+"""
+    isnoBL(bl)
+"""
+
+isnoBL(bl::noBL) = true
+isnoBL(bl) = false
+
+
+
+
+# #################### EZBC/EZBL UTILITY ###########################
+# """
+#     bcs = ezbc(bc1, bc2, N=[0,0])
+#     bcs = ezbc(bcs, N=[0,0])
+#
+# wrapper for easy construction of boundary conditions, `bc1` for dimension 1, `bc2` for dimension 2.
+#
+# `bc1`, `bc2` can by specified as symbols or arrays of symbols. If symbol, it applies to both boundaries in that dimension.
+#
+# See also: [`RobinBoundaryCondition`](@ref), [`PeriodicBoundaryCondition`](@ref)
+# """
+# ezbc(bc1::Symbol,bc2; kwargs...) = ezbc([bc1, bc1],bc2; kwargs...)
+# ezbc(bc1,bc2::Symbol; kwargs...) =  ezbc(bc1, [bc2,bc2]; kwargs...)
+# ezbc(bc1::Symbol, bc2::Symbol; kwargs...) = ezbc([bc1, bc1], [bc2, bc2]; kwargs...)
+# ezbc(bc::Symbol; kwargs...) = ezbc(bc,bc; kwargs...)
+# function ezbc(bc1,bc2; kwargs...)
+#
+#     dirichlet = [:d,:D,:dirichlet,:Dirichlet]
+#     neumann = [:n,:N,:neumann,:Neumann]
+#     robin = [:r,:R,:robin,:Robin]
+#     periodic = [:p,:P,:periodic,:Periodic,:floquet,:Floquet]
+#     matched = [:m,:M,:matched,:Matched]
+#     valid_names = vcat(dirichlet,neumann,robin,periodic,matched)
+#
+#     @assert bc1[1] ∈ valid_names "unrecognized boundary condition for dim=1, side=1"
+#     @assert bc1[2] ∈ valid_names "unrecognized boundary condition for dim=1, side=2"
+#     @assert bc2[1] ∈ valid_names "unrecognized boundary condition for dim=2, side=1"
+#     @assert bc2[2] ∈ valid_names "unrecognized boundary condition for dim=2, side=2"
+#
+#     bc1[1] ∈ dirichlet ? BC11 = DirichletBC{1,1}() : nothing
+#     bc1[1] ∈ neumann ? BC11 = NeumannBC{1,1}() : nothing
+#     bc1[1] ∈ matched ? BC11 = MatchedBC{1,1}(kwargs[:outgoing_qns],kwargs[:incoming_qns]) : nothing
+#     bc1[1] ∈ periodic ? BC11 = FloquetBC{1,1}(kwargs[:lattice]) : nothing
+#     bc1[1] ∈ robin ? BC11 = RobinBC{1,1}(kwargs[:α],kwargs[:β]) : nothing
+#
+#     bc1[2] ∈ dirichlet ? BC12 = DirichletBC{1,2}() : nothing
+#     bc1[2] ∈ neumann ? BC12 = NeumannBC{1,2}() : nothing
+#     bc1[2] ∈ matched ? BC12 = MatchedBC{1,2}(kwargs[:outgoing_qns],kwargs[:incoming_qns]) : nothing
+#     bc1[2] ∈ periodic ? BC12 = FloquetBC{1,2}(kwargs[:lattice]) : nothing
+#     bc1[2] ∈ robin ? BC12 = RobinBC{1,2}(kwargs[:α],kwargs[:β]) : nothing
+#
+#     bc2[1] ∈ dirichlet ? BC21 = DirichletBC{2,1}() : nothing
+#     bc2[1] ∈ neumann ? BC21 = NeumannBC{2,1}() : nothing
+#     bc2[1] ∈ matched ? BC21 = MatchedBC{2,1}(kwargs[:outgoing_qns],kwargs[:incoming_qns]) : nothing
+#     bc2[1] ∈ periodic ? BC21 = FloquetBC{2,1}(kwargs[:lattice]) : nothing
+#     bc2[1] ∈ robin ? BC21 = RobinBC{2,1}(kwargs[:α],kwargs[:β]) : nothing
+#
+#     bc2[2] ∈ dirichlet ? BC22 = DirichletBC{2,2}() : nothing
+#     bc2[2] ∈ neumann ? BC22 = NeumannBC{2,2}() : nothing
+#     bc2[2] ∈ matched ? BC22 = MatchedBC{2,2}(kwargs[:outgoing_qns],kwargs[:incoming_qns]) : nothing
+#     bc2[2] ∈ periodic ? BC22 = FloquetBC{2,2}(kwargs[:lattice]) : nothing
+#     bc2[2] ∈ robin ? BC22 = RobinBC{2,2}(kwargs[:α],kwargs[:β]) : nothing
+#
+#     return ((BC11,BC12),(BC21,BC22))
+# end
+#
+#
+# ezbl(bl1::Symbol,bl2; kwargs...) = ezbl([bl1, bl1],bl2; kwargs...)
+# ezbl(bl1,bl2::Symbol; kwargs...) = ezbl(bl1, [bl2,bl2]; kwargs...)
+# ezbl(bl1::Symbol, bl2::Symbol; kwargs...) = ezbl([bl1, bl1], [bl2, bl2]; kwargs...)
+# ezbl(bl::Symbol; kwargs...) = ezbl(bl,bl; kwargs...)
+# function ezbl(bl1,bl2; kwargs...)
+#
+#     pml = [:p,:P,:pml,:PML,:pml_out,:PML_OUT,:PML_out]
+#     cpml = [:c,:C,:cp,:CP,:cP,:cpml,:cPML,:conj_pml,:conj_PML,:pml_in,:PML_IN,:PML_in]
+#     nobl = [:n,:none,:N,:None,:NONE,:no_bl]
+#     valid_names = vcat(pml,cpml,nobl)
+#     @assert bl1[1] ∈ valid_names "unrecognized boundary layer for dim=1, side=1"
+#     @assert bl1[2] ∈ valid_names "unrecognized boundary layer for dim=1, side=2"
+#     @assert bl2[1] ∈ valid_names "unrecognized boundary layer for dim=2, side=1"
+#     @assert bl2[2] ∈ valid_names "unrecognized boundary layer for dim=2, side=2"
+#
+#     bl1[1] ∈ pml ? BL11 = PML{1,1}() : nothing
+#     bl1[1] ∈ cpml ? BL11 = cPML{1,1}() : nothing
+#     bl1[1] ∈ nobl ? BL11 = noBL{1,1}() : nothing
+#
+#     bl1[2] ∈ pml ? BL12 = PML{1,2}() : nothing
+#     bl1[2] ∈ cpml ? BL12 = cPML{1,2}() : nothing
+#     bl1[2] ∈ nobl ? BL12 = noBL{1,2}() : nothing
+#
+#     bl2[1] ∈ pml ? BL21 = PML{2,1}() : nothing
+#     bl2[1] ∈ cpml ? BL21 = cPML{2,1}() : nothing
+#     bl2[1] ∈ nobl ? BL21 = noBL{2,1}() : nothing
+#
+#     bl2[2] ∈ pml ? BL22 = PML{2,2}() : nothing
+#     bl2[2] ∈ cpml ? BL22 = cPML{2,2}() : nothing
+#     bl2[2] ∈ nobl ? BL22 = noBL{2,2}() : nothing
+#
+#     return ((BL11,BL12),(BL21,BL22))
+# end
 
 end # module

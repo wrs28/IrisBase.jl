@@ -33,10 +33,10 @@ struct BravaisLattice
 
     sin²θ::Float64
     cosθ::Float64
-    R::Array{Float64,2}
-    Rᵀ::Array{Float64,2}
-    v1::Array{Float64,1}
-    v2::Array{Float64,1}
+    R::Array{Float64,2}#SArray{Tuple{2,2},Float64,2,4}#
+    Rᵀ::Array{Float64,2}#SArray{Tuple{2,2},Float64,2,4}#
+    v1::Array{Float64,1}#SArray{Tuple{2},Float64,1,2}#
+    v2::Array{Float64,1}#SArray{Tuple{2},Float64,1,2}#
 
     function BravaisLattice(;a::Number=Inf, α::Number=0, b::Number=Inf, β::Number=π/2, x0::Number=0, y0::Number=0)
         θ = β-α
@@ -44,10 +44,12 @@ struct BravaisLattice
             throw(ArgumentError("lattice angle θ=$(θ) cannot be zero"))
         end
         sinθ, cosθ = sincos(θ)
-        R = [ cos(α) -sin(α);
-              sin(α)  cos(α)]
+        # R = @SMatrix [ cos(α) -sin(α); sin(α)  cos(α)]
+        R = [ cos(α) -sin(α); sin(α)  cos(α)]
         Rᵀ = transpose(R)
+        # v1 = R*SVector(1,0)
         v1 = R*[1,0]
+        # v2 = R*SVector(cosθ,sinθ)
         v2 = R*[cosθ,sinθ]
         new(float(a), float(b), float(α), float(β), float(x0), float(y0),
             sinθ^2, cosθ, R, Rᵀ, v1, v2)
@@ -89,7 +91,7 @@ BravaisLattice(lattice::BravaisLattice; a=lattice.a, b=lattice.b, α=lattice.α,
 maps cartesian (`x`,`y`) into cartesian (`xb`,`yb`) unit cell specified by
 lattice
 """
-function bravais_coordinates_unit_cell(x::T, y::T, lattice::BravaisLattice) where T <: Real
+function bravais_coordinates_unit_cell(x::Real, y::Real, lattice::BravaisLattice)
     a, b, α, β, v1, v2, x0, y0 = lattice.a, lattice.b, lattice.α, lattice.β, lattice.v1, lattice.v2, lattice.x0, lattice.y0
     if (isinf(a) && iszero(β-π/2)) || (isinf(b) && iszero(α)) || (isinf(a) && isinf(b))
         return float(x), float(y)
@@ -104,62 +106,23 @@ function bravais_coordinates_unit_cell(x::T, y::T, lattice::BravaisLattice) wher
 
     return xb, yb
 end
-function bravais_coordinates_unit_cell(x, y, lattice::BravaisLattice)
 
-    P = bravais_coordinates_unit_cell.(x, y, Ref(lattice))
-    xb = Array{Float64}(undef, size(P))
-    yb = Array{Float64}(undef, size(P))
-    for i ∈ eachindex(P)
-        xb[i] = P[i][1]
-        yb[i] = P[i][2]
-    end
-    return xb, yb
-end
-function bravais_coordinates_unit_cell(x, y, lattices::Array{BravaisLattice})
-
-    P = bravais_coordinates_unit_cell.(x, y, lattices)
-    xb = Array{Float64}(undef, size(P))
-    yb = Array{Float64}(undef, size(P))
-    for i ∈ eachindex(P)
-        xb[i] = P[i][1]
-        yb[i] = P[i][2]
-    end
+function bravais_coordinates_unit_cell(x::AbstractArray, y::AbstractArray, lattice::Union{Tlat,AbstractArray{Tlat}}) where Tlat<:BravaisLattice
+    xb = Array{Float64}(undef, size(x)...)
+    yb = Array{Float64}(undef, size(y)...)
+    bravais_coordinates_unit_cell!(xb,yb,x,y,lattice)
     return xb, yb
 end
 
-"""
-    xb, yb = bravais_coordinates_unit_cell(x, y, lattice)
-
-maps cartesian (`x`,`y`) into cartesian (`xb`,`yb`) unit cell specified by
-lattice
-"""
-function bravais_coordinates_unit_cell!(xb::Array, yb::Array, x::Array, y::Array, lattice::BravaisLattice)
-
-    @assert size(x,1)==size(xb,1) "x-array (first argument) size=$(size(xb)) inconsistent with size(x)=$(size(x))"
-    @assert size(y,2)==size(xb,2) "y-array (second argument) size=$(size(y)) inconsistent with size(y)=$(size(y))"
-    if size(x)!==size(y)
-        for i ∈ eachindex(x), j ∈ eachindex(y)
-            xb[i,j], yb[i,j] = bravais_coordinates_unit_cell(x[i],y[j],lattice)
-        end
-    else
-        for i ∈ eachindex(x)
-            xb[i], yb[i] = bravais_coordinates_unit_cell(x[i],y[i],lattice)
-        end
+function bravais_coordinates_unit_cell!(xb::AbstractArray, yb::AbstractArray, x::AbstractArray, y::AbstractArray, lattice::BravaisLattice)
+    for k ∈ eachindex(x)
+        xb[k], yb[k] = bravais_coordinates_unit_cell(x[k],y[k],lattice)
     end
     return nothing
 end
-function bravais_coordinates_unit_cell!(xb::Array, yb::Array, x::Array, y::Array, lattice::Array{BravaisLattice})
-
-    @assert size(x,1)==size(xb,1) "x-array (first argument) size=$(size(xb)) inconsistent with size(x)=$(size(x))"
-    @assert size(y,2)==size(xb,2) "y-array (second argument) size=$(size(y)) inconsistent with size(y)=$(size(y))"
-    if size(x)!==size(y)
-        for i ∈ eachindex(x), j ∈ eachindex(y)
-            xb[i,j], yb[i,j] = bravais_coordinates_unit_cell(x[i],y[j],lattice[i,j])
-        end
-    else
-        for i ∈ eachindex(x)
-            xb[i], yb[i] = bravais_coordinates_unit_cell(x[i],y[i],lattice[i])
-        end
+function bravais_coordinates_unit_cell!(xb::AbstractArray, yb::AbstractArray, x::AbstractArray, y::AbstractArray, lattices::AbstractArray{Tlat}) where Tlat<:BravaisLattice
+    for k ∈ eachindex(x)
+        xb[k], yb[k] = bravais_coordinates_unit_cell(x[k],y[k],lattices[k])
     end
     return nothing
 end
@@ -169,7 +132,7 @@ end
 
 coordinates in bravais frame (i.e. (x,y) = p1*v1 + p2*v2)
 """
-function bravais_coordinates(x::T1, y::T2, lattice::BravaisLattice) where {T1<:Real,T2<:Real}
+function bravais_coordinates(x::Real, y::Real, lattice::BravaisLattice)
     a, b, α, β, v1, v2, x0, y0 = lattice.a, lattice.b, lattice.α, lattice.β, lattice.v1, lattice.v2, lattice.x0, lattice.y0
     if (isinf(a) && iszero(β-π/2)) || (isinf(b) && iszero(α)) || (isinf(a) && isinf(b))
         return float(x-x0), float(y-y0)
@@ -185,16 +148,26 @@ function bravais_coordinates(x::T1, y::T2, lattice::BravaisLattice) where {T1<:R
     p2 = (rv2 - rv1*lattice.cosθ)/lattice.sin²θ
     return p1, p2
 end
-function bravais_coordinates(x, y, lattice::BravaisLattice)
-    P = bravais_coordinates.(x, y, Ref(lattice))
-    p1 = Array{Float64}(undef, size(P))
-    p2 = Array{Float64}(undef, size(P))
-    for i ∈ eachindex(P)
-        p1[i] = P[i][1]
-        p2[i] = P[i][2]
-    end
+function bravais_coordinates(x::AbstractArray,y::AbstractArray,lattice::BravaisLattice)
+    p1 = Array{Float64,2}(undef,length(x),length(y))
+    p2 = Array{Float64,2}(undef,length(x),length(y))
+    bravais_coordinates!(p1,p2,x,y,lattice)
     return p1, p2
 end
+function bravais_coordinates!(p1::AbstractArray,p2::AbstractArray,x::AbstractArray,y::AbstractArray,lattice::BravaisLattice)
+    if size(x)!==size(y)
+        for i ∈ eachindex(x), j ∈ eachindex(y)
+            p1[i,j],p2[i,j] = bravais_coordinates(x[i],y[j],lattice)
+        end
+    else
+        for i ∈ eachindex(x)
+            p1[i],p2[i] = bravais_coordinates(x[i],y[i],lattice)
+        end
+    end
+    return nothing
+end
+bravais_coordinates(x::Real, y::AbstractArray, args...) = bravais_coordinates(hcat(x),y,args...)
+bravais_coordinates(x::AbstractArray, y::Real, args...) = bravais_coordinates(x,vcat(y),args...)
 
 ########################################################################
 ### PLOTTING
