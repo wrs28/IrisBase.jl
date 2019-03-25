@@ -9,6 +9,7 @@ Ellipse,
 Square,
 Rectangle,
 Parallelogram,
+DeformedDisk,
 Universe
 
 abstract type AbstractShape end
@@ -182,6 +183,44 @@ struct Parallelogram <: AbstractParallelogram
         legend --> false
         xrot, yrot = rotate(x,y,pg.cosθ,pg.sinθ)
         pg.x0 .+ xrot, pg.y0 .+ yrot
+    end
+end
+
+
+"""
+    DeformedDisk(R, x0, y0, M, a, φ)
+`R` is radius, `x0` and `y0` are origin, `M`
+is array of multipole integers, `a` is array of
+amplitudes, `φ` is array of angles
+"""
+struct DeformedDisk{N} <: AbstractShape
+    R::Float64
+    M::Vector{Int}
+    a::Vector{Float64}
+    φ::Vector{Float64}
+    x0::Float64
+    y0::Float64
+
+    function DeformedDisk(R::Number,x0::Number,y0::Number,M::AbstractArray,a,φ)
+        new{length(M)}(float(R),M,a,φ,float(x0),float(y0))
+    end
+    function (d::DeformedDisk)(x,y)
+        θ = atan(y-d.y0,x-d.x0)
+        return hypot(x,y) ≤ d.R + sum(d.a.*(map((x,y)->cos(x*(θ-y)),d.M,d.φ)))
+    end
+
+    Base.show(io::IO, d::DeformedDisk) = print(io, "DeformedDisk")#(a=$(fmt("2.2f",ellipse.a)), b=$(fmt("2.2f",ellipse.b)), x0=$(fmt("2.2f",ellipse.x0)), y0=$(fmt("2.2f",ellipse.y0)), θ=$(fmt("2.2f",ellipse.θ)))")
+
+    @recipe function f(d::DeformedDisk)
+        θ = LinRange(0,2π,101)
+        r = d.R .+ sum(d.a.*(map((x,y)->cos.(x*(θ.-y)),d.M,d.φ)))
+        x = @. r*cos(θ)
+        y = @. r*sin(θ)
+        seriestype --> :path
+        fill --> (0,.15,:red)
+        aspect_ratio --> 1
+        legend-->false
+        d.x0 .+ x, d.y0 .+ y
     end
 end
 

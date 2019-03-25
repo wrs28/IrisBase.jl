@@ -30,10 +30,12 @@ Ellipse,
 Square,
 Rectangle,
 Parallelogram,
+DeformedDisk,
 Universe
 
 include("DifferentialOperators.jl")
 using .DifferentialOperators
+export laplacian
 
 include("Dispersions.jl")
 using .Dispersions

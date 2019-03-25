@@ -1,5 +1,10 @@
 #TODO: check 1d plots, to waveguixe_dispersion
 
+
+@recipe function f(dom::Domain)
+    (dom.is_in_domain)
+end
+
 ################################################################################
 ########## SIMULATION
 ################################################################################
@@ -63,14 +68,14 @@ end
             subplot := 1
             title := titles[1]
             seriestype := :line
-            n₁ = real(sqrt.(ɛ-1im*sim.tls.D₀*F))
+            n₁ = real(sqrt.(ɛ))
             x_f[:], n₁[:]
         end
         @series begin
             subplot := 2
             title := titles[2]
             seriestype := :line
-            n₂ = imag(sqrt.(ɛ-1im*sim.tls.D₀*F))
+            n₂ = imag(sqrt.(ɛ))
             x_f[:], n₂[:]
         end
         @series begin
@@ -100,7 +105,7 @@ end
             layout --> (1,1)
             @series begin
                 subplot := 1
-                n = sqrt.(ɛ-1im*sim.tls.D₀*F)
+                n = sqrt.(ɛ)
                 x_f[:], by.(n[:])
             end
         else
@@ -228,7 +233,7 @@ end
             title := titles[1]
             color := cmapsim1
             seriestype := :heatmap
-            n₁ = real(sqrt.(ɛ-1im*sim.tls.D₀*F))
+            n₁ = real(sqrt.(ɛ))
             clims := (minimum(n₁), n_mult*maximum(n₁))
             x_f, y_f, permutedims(n₁)
         end
@@ -237,7 +242,7 @@ end
             title := titles[2]
             color := cmapsim2
             seriestype := :heatmap
-            n₂ = imag(sqrt.(ɛ-1im*sim.tls.D₀*F))
+            n₂ = imag(sqrt.(ɛ))
             clims := (-maximum(abs.(n₂)), maximum(abs.(n₂)))
             x_f, y_f, permutedims(n₂)
         end
@@ -257,10 +262,10 @@ end
                     elseif isNeumann(sim.bnd.bc[k][i])
                         linestyle := :dash
                     end
-                    if !isNone(sim.bnd.bl[k][i])
-                        if isPMLout(sim.bnd.bl[k][i])
+                    if !isnoBL(sim.bnd.bl[k][i])
+                        if isPML(sim.bnd.bl[k][i])
                             fill_color = :red
-                        elseif isPMLin(sim.bnd.bl[k][i])
+                        elseif iscPML(sim.bnd.bl[k][i])
                             fill_color = :blue
                         end
                         @series begin
@@ -316,7 +321,7 @@ end
                 subplot := 1
                 color := cmapsim1
                 seriestype := :heatmap
-                n = sqrt.(ɛ-1im*sim.tls.D₀*F)
+                n = sqrt.(ɛ)
                 clims := (minimum(by.(n)), maximum(by.(n)))
                 x_f, y_f, permutedims(by.(n))
             end
@@ -326,10 +331,10 @@ end
                 elseif isNeumann(sim.bnd.bc[i])
                     linestyle := :dash
                 end
-                if !isNone(sim.bnd.bl[i])
-                    if isPMLout(sim.bnd.bl[i])
+                if !isnoBL(sim.bnd.bl[i])
+                    if isPML(sim.bnd.bl[i])
                         fill_color = :red
-                    elseif isPMLin(sim.bnd.bl[i])
+                    elseif iscPML(sim.bnd.bl[i])
                         fill_color = :blue
                     end
                     @series begin
@@ -376,7 +381,7 @@ end
             layout --> (N_row,N_col)
             for i ∈ 1:N
                 ψ = ψ_plot[:,:,i]
-                n₁ = real(sqrt.(ɛ-1im*sim.tls.D₀*F))
+                n₁ = real(sqrt.(ɛ))
                 renorm = (maximum(abs.(ψ)) - minimum(abs.(ψ)))/(maximum(n₁)-minimum(n₁))
 
                 n₁ = n₁ .- minimum(n₁)

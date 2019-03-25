@@ -361,6 +361,46 @@ function Shapes.Parallelogram(a::Number, b::Number, α::Number, x0::Number, y0::
 end
 
 
+
+"""
+    subdomains = DeformedDisk(a, b, x0, y0, θ, params::Dict, subdomains::Subdomains; type=:background, ε=piecewise_constant_ε, F=piecewise_constant_F)
+"""
+function Shapes.DeformedDisk(R::Number, x0::Number, y0::Number, M::AbstractArray, a::AbstractArray, φ::AbstractArray,
+            params::Dict,
+            subdomains::Subdomains;
+            type::AbstractDomain=GenericDomain(),
+            ε::Function = piecewise_constant_ε,
+            F::Function = piecewise_constant_F)
+
+    return add_subdomain(DeformedDisk(R, x0, y0, M, a, φ), params, type, ε, F, subdomains)
+end
+"""
+    domain = DeformedDisk(a, b, x0, y0, θ, params::Dict, domain::Domain; type=:background, ε=piecewise_constant_ε, F=piecewise_constant_F)
+"""
+function Shapes.DeformedDisk(R::Number, x0::Number, y0::Number, M::AbstractArray, a::AbstractArray, φ::AbstractArray,
+            params::Dict,
+            domain::Domain;
+            type::AbstractDomain=GenericDomain(),
+            ε::Function = piecewise_constant_ε,
+            F::Function = piecewise_constant_F)
+
+    subdomains = DeformedDisk(R, x0, y0, M, a, φ, params, Subdomains(); type=type, ε=ε, F=F)
+    return add_subdomain(domain, subdomains)
+end
+"""
+    domain = DeformedDisk(a, b, x0, y0, θ, params::Dict; type=:background, ε=piecewise_constant_ε, F=piecewise_constant_F)
+"""
+function Shapes.DeformedDisk(R::Number, x0::Number, y0::Number, M::AbstractArray, a::AbstractArray, φ::AbstractArray,
+            params::Dict;
+            type::AbstractDomain=GenericDomain(),
+            ε::Function = piecewise_constant_ε,
+            F::Function = piecewise_constant_F)
+
+    return build_domain(;is_in_domain=DeformedDisk(R,x0,y0,M,a,φ), domain_params=params,
+                            domain_type=type, domain_ε=ε, domain_F=F)
+end
+
+
 """
     subdomains = Universe(params::Dict, subdomains::Subdomains; type=:background, ε=piecewise_constant_ε, F=piecewise_constant_F)
 """
@@ -389,12 +429,12 @@ end
     domain = Universe(params::Dict; type=:background, ε=piecewise_constant_ε, F=piecewise_constant_F)
 """
 function Shapes.Universe(
-            n1::Number;
+            n₁::Number;
             type::AbstractDomain=GenericDomain(),
             ε::Function = piecewise_constant_ε,
             F::Function = piecewise_constant_F)
 
-    return build_domain(;is_in_domain=Universe(), domain_params=Dict(:n1=>n1),
+    return build_domain(;is_in_domain=Universe(), domain_params=Dict(:n₁=>n₁),
                             domain_type=type, domain_ε=ε, domain_F=F)
 end
 

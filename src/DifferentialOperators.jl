@@ -25,7 +25,6 @@ function laplacian(N, coordinate_system::TCS, Δ, bcs, bls=((noBL{1,1}(),noBL{1,
     OD2 = define_op{2,2,TCS}(N,Δ,bcs,bls; kwargs...)
     ∇₁² = diff_op(OD1,args...)
     ∇₂² = diff_op(OD2,args...)
-    return OD1
     return sparse(∇₁², ∇₂²), (OD1,OD2)
 end
 function laplacian{DIM}(N, coordinate_system::TCS, Δ, bcs, bls=((noBL{1,1}(),noBL{1,2}()),(noBL{2,1}(),noBL{2,2}())), args...; kwargs...) where {DIM,TCS<:CoordinateSystem}
@@ -82,9 +81,9 @@ struct OperatorDefinition{ORD,DIM,TCS,TBC11,TBC12,TBC21,TBC22,TBL11,TBL12,TBL21,
         x2 = LinRange(Δ[2][1],Δ[2][2],N[2]+1)
         xd = (x1,x2)
 
-        bcs = apply_args(bcs, CS ; N=N, dx=dx, xmin=xmin, lattice=lattice, kwargs...)
-        depth = haskey(kwargs,:depth) ? kwargs[:depth] : 0
-        bls = apply_args(bls; Δ=Δ, depth=depth)
+        # bcs = apply_args(bcs, CS() ; N=N, dx=dx, xmin=xmin, lattice=lattice, kwargs...)
+        # depth = haskey(kwargs,:depth) ? kwargs[:depth] : 0
+        # bls = apply_args(bls; Δ=Δ, depth=depth)
         h1 = typeof(bls[1])<:Tuple{noBL,noBL} ? zeros(Int,size(x[1])) : 1im*(bls[1][1].(x[1]) + bls[1][2].(x[1]))
         h2 = typeof(bls[2])<:Tuple{noBL,noBL} ? zeros(Int,size(x[2])) : 1im*(bls[2][1].(x[2]) + bls[2][2].(x[2]))
         h = (h1,h2)

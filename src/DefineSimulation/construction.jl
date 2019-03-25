@@ -8,8 +8,8 @@ function construct_εFr(bnd::Boundary, dis::Discretization, sys::System)
     x = dis.X
     y = dis.Y
     domains = Array{Int}(undef,size(x)...)
-    r = domains
     which_domains!(domains, x, y, bnd, sys)
+    r = domains
 
     xb, yb = Array{Float64}(undef,size(x)...), Array{Float64}(undef,size(y)...)
     bravais_coordinates_unit_cell!(xb,yb,x,y,domains,sys)
@@ -19,8 +19,8 @@ function construct_εFr(bnd::Boundary, dis::Discretization, sys::System)
     F = Array{Float64}(undef,dis.N[1],dis.N[2])
     for i ∈ eachindex(r)
         j = r[i]
-        ε[i] = sys.ε_by_region[j](x[j],y[j],sys.params_by_region[r[j]],n1,n2)
-        F[i] = sys.F_by_region[j](x[j],y[j],sys.params_by_region[r[j]],f)
+        ε[i] = sys.ε_by_region[j](x[i],y[i],sys.params_by_region[j],n1,n2)
+        F[i] = sys.F_by_region[j](x[i],y[i],sys.params_by_region[j],f)
     end
     return ε, F, r
 end

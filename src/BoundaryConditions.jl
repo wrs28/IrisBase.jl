@@ -127,7 +127,7 @@ function conductivity_profile(x,Δ,depth,dim,side)
     #BL[i][j]<:cPML ? α[k] = flipsign(conj(α[k]),-1) : nothing
     return isnan(σ) ? complex(0.) : σ
 end
-conj_conductivity_profile(x,Δ,depth,DIM,SIDE) = conj(conductivity_profile(x,Δ,depth,DIM,SIDE))
+conj_conductivity_profile(x,Δ,depth,DIM,SIDE) = -conj(conductivity_profile(x,Δ,depth,DIM,SIDE))
 
 ################## BOUNDARY CONDITIONS #####################
 """
@@ -633,7 +633,8 @@ struct MatchedBC{DIM,SIDE,CS,TBC1,TBC2,FIN} <: AbstractBC{DIM,SIDE}
                 J1[idx] = i
                 I2[idx] = N[1]
                 J2[idx] = j
-                weights[idx] = dθ*exp(complex(0,m*(i-j)*dθ))/2π
+                # weights[idx] = dθ*exp(complex(0,m*(i-j)*dθ))/2π
+                weights[idx] = dθ*exp(complex(0,-m*(i-j)*dθ))/2π
                 M_inds[idx] = midx
                 idx += 1
             end
@@ -649,7 +650,8 @@ struct MatchedBC{DIM,SIDE,CS,TBC1,TBC2,FIN} <: AbstractBC{DIM,SIDE}
                 J1[idx] = i
                 I2[idx] = N[1]
                 J2[idx] = j
-                weights[idx] = dθ*exp(complex(0,m*(i-j)*dθ))/2π
+                # weights[idx] = dθ*exp(complex(0,m*(i-j)*dθ))/2π
+                weights[idx] = dθ*exp(complex(0,-m*(i-j)*dθ))/2π
                 M_inds[idx] = midx
                 idx += 1
             end
