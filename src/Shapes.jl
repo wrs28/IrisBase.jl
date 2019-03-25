@@ -209,7 +209,7 @@ struct DeformedDisk{N} <: AbstractShape
         return hypot(x,y) ≤ d.R + sum(d.a.*(map((x,y)->cos(x*(θ-y)),d.M,d.φ)))
     end
 
-    Base.show(io::IO, d::DeformedDisk) = print(io, "DeformedDisk")#(a=$(fmt("2.2f",ellipse.a)), b=$(fmt("2.2f",ellipse.b)), x0=$(fmt("2.2f",ellipse.x0)), y0=$(fmt("2.2f",ellipse.y0)), θ=$(fmt("2.2f",ellipse.θ)))")
+    Base.show(io::IO, d::DeformedDisk) = print(io,"DeformedDisk")#(a=$(fmt("2.2f",ellipse.a)), b=$(fmt("2.2f",ellipse.b)), x0=$(fmt("2.2f",ellipse.x0)), y0=$(fmt("2.2f",ellipse.y0)), θ=$(fmt("2.2f",ellipse.θ)))")
 
     @recipe function f(d::DeformedDisk)
         θ = LinRange(0,2π,101)
