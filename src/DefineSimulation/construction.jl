@@ -14,7 +14,6 @@ function construct_εFr(bnd::Boundary, dis::Discretization, sys::System)
     xb, yb = Array{Float64}(undef,size(x)...), Array{Float64}(undef,size(y)...)
     bravais_coordinates_unit_cell!(xb,yb,x,y,domains,sys)
 
-    # n1, n2, f = 1.0, 0.0, 0.0
     ε = Array{ComplexF64}(undef,dis.N[1],dis.N[2])
     F = Array{Float64}(undef,dis.N[1],dis.N[2])
     for i ∈ eachindex(r)
