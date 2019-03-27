@@ -14,13 +14,13 @@ function construct_εFr(bnd::Boundary, dis::Discretization, sys::System)
     xb, yb = Array{Float64}(undef,size(x)...), Array{Float64}(undef,size(y)...)
     bravais_coordinates_unit_cell!(xb,yb,x,y,domains,sys)
 
-    n1, n2, f = [1.0], [0.0], [0.0]
+    # n1, n2, f = 1.0, 0.0, 0.0
     ε = Array{ComplexF64}(undef,dis.N[1],dis.N[2])
     F = Array{Float64}(undef,dis.N[1],dis.N[2])
     for i ∈ eachindex(r)
         j = r[i]
-        ε[i] = sys.ε_by_region[j](x[i],y[i],sys.params_by_region[j],n1,n2)
-        F[i] = sys.F_by_region[j](x[i],y[i],sys.params_by_region[j],f)
+        ε[i] = sys.ε_by_region[j](x[i],y[i],sys.params_by_region[j])
+        F[i] = sys.F_by_region[j](x[i],y[i],sys.params_by_region[j])
     end
     return ε, F, r
 end
@@ -29,51 +29,14 @@ end
 """
     ε, regions = sub_pixel_smoothing(bnd, dis, sys; display=false)
 """
-function sub_pixel_smoothing!(bnd::Boundary, dis::Discretization, sys::System, ε, F, r; display::Bool=false)
+function sub_pixel_smoothing!(bnd::Boundary, dis::Discretization{Cartesian}, sys::System, ε, F, r; display::Bool=false)
     x = dis.X
     y = dis.Y
     sub_pixel_num = dis.sub_pixel_num
-    n1, n2, f = [1.0], [0.0], [0.0]
     if dis.N[2] == 1
-        # sub_x = Array{Float64}(undef, sub_pixel_num,1)
-        # sub_y = [y[1]]
-        # xb = Array{Float64}(undef, sub_pixel_num, 1)
-        # yb = Array{Float64}(undef, sub_pixel_num, 1)
-        # sub_regions = Array{Int}(undef, sub_pixel_num, 1)
-        # sub_domains = Array{Int}(undef, sub_pixel_num, 1)
-        # for i ∈ 2:(size(x,1)-1)
-        #     nearestNeighborFlag = r[i]!==r[i+1] || r[i]!==r[i-1]
-        #     if nearestNeighborFlag
-        #         x_min = (x[i]+x[i-1])/2
-        #         x_max = (x[i]+x[i+1])/2
-        #         sub_x[:] = LinRange(x_min, x_max, sub_pixel_num)
-        #         sub_domains[:] = which_domain.(sub_x, sub_y, Ref(bnd), Ref(sys))
-        #         bravais_coordinates_unit_cell!(xb, yb, sub_x, sub_y, sub_domains, sys)
-        #         sub_regions[:] = which_region.(xb, yb, sub_domains, Ref(sys))
-        #         ε[i] = mean([sys.ε_by_region[sub_regions[i]](sub_x[i],sub_y[1],sys.params_by_region[sub_regions[i]],n1,n2) for i ∈ eachindex(sub_regions)])
-        #         F[i] = mean([sys.F_by_region[sub_regions[i]](sub_x[i],sub_y[1],sys.params_by_region[sub_regions[i]],f) for i ∈ eachindex(sub_regions)])
-        #     end
-        # end
+
     elseif dis.N[1] == 1
-        # sub_x = [x[1]]
-        # sub_y = Array{Float64}(undef, 1, sub_pixel_num)
-        # xb = Array{Float64}(undef, 1, sub_pixel_num)
-        # yb = Array{Float64}(undef, 1, sub_pixel_num)
-        # sub_regions = Array{Int}(undef, 1, sub_pixel_num)
-        # sub_domains = Array{Int}(undef, 1, sub_pixel_num)
-        # for i ∈ 2:(size(y,2)-1)
-        #     nearestNeighborFlag = r[i]!==r[i+1] || r[i]!==r[i-1]
-        #     if nearestNeighborFlag
-        #         y_min = (y[i]+y[i-1])/2
-        #         y_max = (y[i]+y[i+1])/2
-        #         sub_y[:] = LinRange(y_min, y_max, sub_pixel_num)
-        #         sub_domains[:] = which_domain.(sub_x, sub_y, Ref(bnd), Ref(sys))
-        #         bravais_coordinates_unit_cell!(xb, yb, sub_x, sub_y, sub_domains, sys)
-        #         sub_regions[:] = which_region.(xb, yb, sub_domains, Ref(sys))
-        #         ε[i] = mean([sys.ε_by_region[sub_regions[i]](sub_x[1],sub_y[i],sys.params_by_region[sub_regions[i]],n1,n2) for i ∈ eachindex(sub_regions)])
-        #         F[i] = mean([sys.F_by_region[sub_regions[i]](sub_x[1],sub_y[i],sys.params_by_region[sub_regions[i]],f) for i ∈ eachindex(sub_regions)])
-        #     end
-        # end
+
     else
         sub_x = Array{Float64}(undef, sub_pixel_num, sub_pixel_num)
         sub_y = Array{Float64}(undef, sub_pixel_num, sub_pixel_num)
@@ -85,35 +48,90 @@ function sub_pixel_smoothing!(bnd::Boundary, dis::Discretization, sys::System, �
         if display
             pg = Progress((size(x,1)-2)*(size(y,2)-2), PROGRESS_UPDATE_TIME::Float64, "sub-pixel smoothing ")
         end
-        for i ∈ 2:(size(x,1)-1), j ∈ 2:(size(y,2)-1)
-            nearestNeighborFlag = r[i,j]!==r[i,j+1] || r[i,j]!==r[i,j-1] || r[i,j]!==r[i+1,j] || r[i,j]!==r[i-1,j]
-            nextNearestNeighborFlag = r[i,j]!==r[i+1,j+1] || r[i,j]!==r[i-1,j-1] || r[i,j]!==r[i+1,j-1] || r[i,j]!==r[i-1,j+1]
-            if nearestNeighborFlag || nextNearestNeighborFlag
-                x_min = (x[i]+x[i-1])/2
-                y_min = (y[j]+y[j-1])/2
-                x_max = (x[i]+x[i+1])/2
-                y_max = (y[j]+y[j+1])/2
-                for k ∈ CartesianIndices(sub_x)
-                    sub_x[k] = x_min + (k[1]-1)*(x_max-x_min)/(sub_pixel_num-1)
-                    sub_y[k] = y_min + (k[2]-1)*(y_max-y_min)/(sub_pixel_num-1)
+        for h ∈ CartesianIndices(x)
+            i,j = h[1],h[2]
+            if all((1,1).<(i,j).<size(x))
+                nearestNeighborFlag = r[i,j]!==r[i,j+1] || r[i,j]!==r[i,j-1] || r[i,j]!==r[i+1,j] || r[i,j]!==r[i-1,j]
+                nextNearestNeighborFlag = r[i,j]!==r[i+1,j+1] || r[i,j]!==r[i-1,j-1] || r[i,j]!==r[i+1,j-1] || r[i,j]!==r[i-1,j+1]
+                if nearestNeighborFlag || nextNearestNeighborFlag
+                    x_min = (x[i,j]+x[i-1,j])/2
+                    x_max = (x[i,j]+x[i+1,j])/2
+                    y_min = (y[i,j]+y[i,j-1])/2
+                    y_max = (y[i,j]+y[i,j+1])/2
+                    for k ∈ CartesianIndices(sub_x)
+                        sub_x[k] = x_min + (k[1]-1)*(x_max-x_min)/(sub_pixel_num-1)
+                        sub_y[k] = y_min + (k[2]-1)*(y_max-y_min)/(sub_pixel_num-1)
+                    end
+                    which_domains!(domains, sub_x, sub_y, bnd, sys)
+                    bravais_coordinates_unit_cell!(xb, yb, sub_x, sub_y, domains, sys)
+                    for l ∈ eachindex(xb)
+                        d = domains[l]
+                        ε_temp[l] = sys.ε_by_region[d](sub_x[d],sub_y[d],sys.params_by_region[d])
+                        F_temp[l] = sys.F_by_region[d](sub_x[d],sub_y[d],sys.params_by_region[d])
+                    end
+                    ε[i,j] = mean(ε_temp)
+                    F[i,j] = mean(F_temp)
                 end
-                which_domains!(domains, sub_x, sub_y, bnd, sys)
-                bravais_coordinates_unit_cell!(xb, yb, sub_x, sub_y, domains, sys)
-                for i ∈ eachindex(xb)
-                    j = domains[i]
-                    ε_temp[i] = sys.ε_by_region[j](sub_x[j],sub_y[j],sys.params_by_region[j],n1,n2)
-                    F_temp[i] = sys.F_by_region[j](sub_x[j],sub_y[j],sys.params_by_region[j],f)
+                if display
+                    next!(pg)
                 end
-                ε[i,j] = mean(ε_temp)
-                F[i,j] = mean(F_temp)
-            end
-            if display
-                next!(pg)
             end
         end
     end
     return nothing
 end
+function sub_pixel_smoothing!(bnd::Boundary, dis::Discretization{Polar}, sys::System, ε, F, r; display::Bool=false)
+    R = broadcast((a,b)->a,dis.x...)
+    Θ = broadcast((a,b)->b,dis.x...)
+    sub_pixel_num = dis.sub_pixel_num
+    if dis.N[2] == 1
+
+    else
+        sub_x = Array{Float64}(undef, sub_pixel_num, sub_pixel_num)
+        sub_y = Array{Float64}(undef, sub_pixel_num, sub_pixel_num)
+        domains = Array{Int}(undef, sub_pixel_num, sub_pixel_num)
+        ε_temp = Array{ComplexF64}(undef,sub_pixel_num, sub_pixel_num)
+        F_temp = Array{Float64}(undef,sub_pixel_num, sub_pixel_num)
+        if display
+            pg = Progress((size(x,1)-2)*(size(y,2)-2), PROGRESS_UPDATE_TIME::Float64, "sub-pixel smoothing ")
+        end
+        for h ∈ CartesianIndices(r)
+            i,j = h[1],h[2]
+            if all((1,1).<(i,j).<size(r))
+                nearestNeighborFlag = r[i,j]!==r[i,j+1] || r[i,j]!==r[i,j-1] || r[i,j]!==r[i+1,j] || r[i,j]!==r[i-1,j]
+                nextNearestNeighborFlag = r[i,j]!==r[i+1,j+1] || r[i,j]!==r[i-1,j-1] || r[i,j]!==r[i+1,j-1] || r[i,j]!==r[i-1,j+1]
+                if nearestNeighborFlag || nextNearestNeighborFlag
+                    r_min = (R[i,j]+R[i-1,j])/2
+                    r_max = (R[i,j]+R[i+1,j])/2
+                    θ_min = (Θ[i,j]+Θ[i,j-1])/2
+                    θ_max = (Θ[i,j]+Θ[i,j+1])/2
+                    for kj ∈ 1:sub_pixel_num
+                        sub_θ = θ_min + (kj-1)*(θ_max-θ_min)/(sub_pixel_num-1)
+                        sc = sincos(sub_θ)
+                        for ki ∈ 1:sub_pixel_num
+                            sub_r = r_min + (ki-1)*(r_max-r_min)/(sub_pixel_num-1)
+                            sub_x[ki,kj] = sub_r*sc[2]
+                            sub_y[ki,kj] = sub_r*sc[1]
+                        end
+                    end
+                    which_domains!(domains, sub_x, sub_y, bnd, sys)
+                    for l ∈ eachindex(domains)
+                        d = domains[l]
+                        ε_temp[l] = sys.ε_by_region[d](sub_x[d],sub_y[d],sys.params_by_region[d])
+                        F_temp[l] = sys.F_by_region[d](sub_x[d],sub_y[d],sys.params_by_region[d])
+                    end
+                    ε[i,j] = mean(ε_temp)
+                    F[i,j] = mean(F_temp)
+                end
+                if display
+                    next!(pg)
+                end
+            end
+        end
+    end
+    return nothing
+end
+
 
 function which_domains(x,y,bnd,sys)
     domains = zeros(Int,size(x)...)
