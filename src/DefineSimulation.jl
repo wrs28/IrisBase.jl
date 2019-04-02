@@ -36,7 +36,7 @@ include("DefineSimulation/overloading.jl")
 include("DefineSimulation/coordinates.jl")
 include("DefineSimulation/bravais.jl")
 
-include("DefineSimulation/plot_defaults.jl")
+# include("DefineSimulation/plot_defaults.jl")
 include("DefineSimulation/plotting.jl")
 
 end # module

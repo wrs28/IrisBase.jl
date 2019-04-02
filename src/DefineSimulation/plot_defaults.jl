@@ -129,46 +129,37 @@ end
 """
 function fix_colormap(theme)
 
-    F_sign = +1
-    n_mult=1
-
     if theme ∈ [:dark, :juno]
         cmapc=:bkr
         cmapk=:ice
         cmapsim1=:dimgray
         cmapsim2=:bky
-        n_mult=1.3
     elseif theme ∈ [:solarized]
         cmapc=:bky
         cmapk=:solar
         cmapsim1=:viridis
         cmapsim2=:bky
-        n_mult=1.3
     elseif theme ∈ [:orange]
         cmapc=:bky
         cmapk=:haline
         cmapsim1=:inferno
         cmapsim2=:bky
-        n_mult=1.1
     elseif theme ∈ [:lime]
         cmapc=:bky
         cmapk=:haline
         cmapsim1=:inferno
         cmapsim2=:bky
-        n_mult=1.0
     elseif theme ∈ [:solarized_light]
         cmapc=:YlOrBr
         cmapk=:Greys
         cmapsim1=:YlOrBr
         cmapsim2=:RdYlBu
-        F_sign = -1
     else
         cmapc=:RdBu
         cmapk=:Greys
         cmapsim1=:Greys
         cmapsim2=:RdGy
-        F_sign = -1
     end
 
-    return cmapc, cmapk, cmapsim1, cmapsim2, n_mult, F_sign
+    return cmapc, cmapk, cmapsim1, cmapsim2
 end
