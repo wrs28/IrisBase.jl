@@ -303,6 +303,7 @@ end
     lw --> 6
     seriestype --> :heatmap
     legend --> false
+    framestyle --> :grid
 
     if by ∈ [:real, real, "real"]
         color --> :sequential
@@ -423,6 +424,7 @@ end
     lw --> 6
     seriestype --> :heatmap
     legend --> false
+    framestyle --> :grid
 
     p = pb.ψ_plot[:,:,i]
     if by ∈ [:real,real,"real"]
