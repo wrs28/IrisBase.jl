@@ -37,7 +37,9 @@ struct Circle <: AbstractCircle
         x = @. cr.x0 + cr.R*cos(θ)
         y = @. cr.x0 + cr.R*sin(θ)
         seriestype --> :path
-        fill --> (0,.15,:red)
+        fillcolor --> :red
+        fillrange --> 0
+        fillalpha --> .15
         aspect_ratio --> 1
         legend-->false
         (x,y)
@@ -69,7 +71,9 @@ struct Ellipse <: AbstractEllipse
         x = @. el.a*cos(θ)
         y = @. el.b*sin(θ)
         seriestype --> :path
-        fill --> (0,.15,:red)
+        fillcolor --> :red
+        fillrange --> 0
+        fillalpha --> .15
         aspect_ratio --> 1
         legend-->false
         xrot, yrot = rotate(x,y,el.cosθ,el.sinθ)
@@ -103,7 +107,9 @@ struct Square <: AbstractSquare
         x = sq.a*cumsum([0, +1,  0, -1,  0])
         y = sq.a*cumsum([0,  0, +1,  0, -1])
         seriestype --> :path
-        fill --> (0,.15,:red)
+        fillcolor --> :red
+        fillrange --> 0
+        fillalpha --> .15
         aspect_ratio --> 1
         legend --> false
         xrot, yrot = rotate(x,y,sq.cosθ,sq.sinθ)
@@ -139,7 +145,9 @@ struct Rectangle <: AbstractRectangle
         x = cumsum([0, rc.a,      0, -rc.a, 0])
         y = cumsum([0,     0, +rc.b,     0, -rc.b])
         seriestype --> :path
-        fill --> (0,.15,:red)
+        fillcolor --> :red
+        fillrange --> 0
+        fillalpha --> .15
         aspect_ratio --> 1
         legend --> false
         xrot, yrot = rotate(x,y,rc.cosθ,rc.sinθ)
@@ -178,7 +186,9 @@ struct Parallelogram <: AbstractParallelogram
         x = cumsum([0, pg.a, +pg.b*cos(pg.α), -pg.a, -pg.b*cos(pg.α)])
         y = cumsum([0, 0, +pg.b*sin(pg.α), 0, -pg.b*sin(pg.α)])
         seriestype --> :path
-        fill --> (0,.15,:red)
+        fillcolor --> :red
+        fillrange --> 0
+        fillalpha --> .15
         aspect_ratio --> 1
         legend --> false
         xrot, yrot = rotate(x,y,pg.cosθ,pg.sinθ)
@@ -217,7 +227,9 @@ struct DeformedDisk{N} <: AbstractShape
         x = @. r*cos(θ)
         y = @. r*sin(θ)
         seriestype --> :path
-        fill --> (0,.15,:red)
+        fillcolor --> :red
+        fillrange --> 0
+        fillalpha --> .15
         aspect_ratio --> 1
         legend-->false
         d.x0 .+ x, d.y0 .+ y
