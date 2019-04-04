@@ -68,7 +68,7 @@ struct PaintBucket{Tbnd}
         ψ_temp = Array{ComplexF64}(undef, M[1]+2, M[2]+2)
         ψ_plot = Array{ComplexF64}(undef, 2M[1], 2M[1], N)
         for i ∈ 1:N
-            @views ψ_temp[2:end-1,2:end-1] = reshape(ψ[:,i], M[1], M[2])#./root_r
+            @views ψ_temp[2:end-1,2:end-1] = reshape(ψ[:,i]/maximum(abs.(ψ[:,i])), M[1], M[2])#./root_r
             @views ψ_temp[:,1] = ψ_temp[:,end-1]
             @views ψ_temp[:,end] = ψ_temp[:,2]
             @views ψ_temp[1,:] = ψ_temp[2,:]
@@ -174,7 +174,7 @@ struct PaintBucket{Tbnd}
 
         ψ_plot = Array{ComplexF64}(undef, M[1], M[2], N)
         for i in 1:N
-            ψ_plot[:,:,i] = reshape(ψ[:,i], M[1], M[2])
+            ψ_plot[:,:,i] = reshape(ψ[:,i]/maximum(abs.(ψ[:,i])), M[1], M[2])
         end
 
         boundary_data1_f = ([x_f[1],x_f[1]],[y_f[1],y_f[end]])
