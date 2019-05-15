@@ -46,28 +46,41 @@ abstract type AbstractLocalBC{DIM,SIDE}<:AbstractBC{DIM,SIDE} end
 mutable struct PML{DIM,SIDE,FIN}<:AbstractBL{DIM,SIDE}
     depth::Float64 # depth of PML layer
     Δ::NTuple{2,NTuple{2,Float64}} # system size w/o pml
+    bounds::Array{Float64,1}
 
     # create PML{DIM,SIDE} empty
     PML() = new{Union{},Union{},false}()
-    PML{DIM,SIDE}() where {DIM,SIDE} = new{DIM,SIDE,false}(NaN,((NaN,NaN),(NaN,NaN)))
+    PML{DIM,SIDE}() where {DIM,SIDE} = new{DIM,SIDE,false}(NaN,((NaN,NaN),(NaN,NaN)),[-Inf,Inf])
     # create PML{DIM,SIDE} initialized with depth
-    PML{DIM,SIDE}(depth::Number) where {DIM,SIDE} = new{DIM,SIDE,true}(depth,((NaN,NaN),(NaN,NaN)))
-    function PML{DIM,SIDE}(depth::Number,Δ::NTuple{2,NTuple{2,Number}}) where {DIM,SIDE}
+    PML{DIM,SIDE}(depth::Number,bounds::Array=[-Inf,Inf]) where {DIM,SIDE} = new{DIM,SIDE,true}(depth,((NaN,NaN),(NaN,NaN)),bounds)
+    function PML{DIM,SIDE}(depth::Number,Δ::NTuple{2,NTuple{2,Number}},bounds::Array) where {DIM,SIDE}
         @assert depth>0 "cannot have PML with 0 depth"
-        new{DIM,SIDE,true}(depth,Δ)
+        new{DIM,SIDE,true}(depth,Δ,bounds)
     end
     # add depth and and system size to PML
-    (pml::PML{DIM,SIDE,false})(depth::Number,Δ::NTuple{2,NTuple{2,Number}}) where {DIM,SIDE} = PML{DIM,SIDE}(depth,Δ)
+    (pml::PML{DIM,SIDE,false})(depth::Number,Δ::NTuple{2,NTuple{2,Number}},bounds::Array) where {DIM,SIDE} = PML{DIM,SIDE}(depth,Δ,bounds)
     # add system size to initialized PML even if given depth
-    (pml::PML{DIM,SIDE,true})(depth::Number,Δ::NTuple{2,NTuple{2,Number}}) where {DIM,SIDE} = PML{DIM,SIDE}(pml.depth,Δ)
+    (pml::PML{DIM,SIDE,true})(depth::Number,Δ::NTuple{2,NTuple{2,Number}},bounds::Array) where {DIM,SIDE} = PML{DIM,SIDE}(pml.depth,Δ,pml.bounds)
     # add system size to initialized PML
-    (pml::PML{DIM,SIDE,true})(Δ::NTuple{2,NTuple{2,Number}}) where {DIM,SIDE} = PML{DIM,SIDE}(pml.depth,Δ)
+    (pml::PML{DIM,SIDE,true})(Δ::NTuple{2,NTuple{2,Number}}) where {DIM,SIDE} = PML{DIM,SIDE}(pml.depth,Δ,pml.bounds)
     # if PML initialized, do nothing unless given depth and/or system size
     (pml::PML{DIM,SIDE,true})(args...) where {DIM,SIDE} = pml
 
     (pml::PML{DIM,SIDE,true})(x::Number) where {DIM,SIDE} = conductivity_profile(x,pml.Δ,pml.depth,DIM,SIDE)
-    (pml::PML{1,SIDE,true})(x::Number,y::Number) where {SIDE} = conductivity_profile(x,pml.Δ,pml.depth,1,SIDE)
-    (pml::PML{2,SIDE,true})(x::Number,y::Number) where {SIDE} = conductivity_profile(y,pml.Δ,pml.depth,2,SIDE)
+    function (pml::PML{1,SIDE,true})(x::Number,y::Number) where {SIDE}
+        if pml.bounds[1] ≤ y ≤ pml.bounds[2]
+            return conductivity_profile(x,pml.Δ,pml.depth,1,SIDE)
+        else
+            return conj_conductivity_profile(x,pml.Δ,pml.depth,1,SIDE)
+        end
+    end
+    function (pml::PML{2,SIDE,true})(x::Number,y::Number) where {SIDE}
+        if pml.bounds[1] ≤ x ≤ pml.bounds[2]
+            return conductivity_profile(y,pml.Δ,pml.depth,2,SIDE)
+        else
+            return conj_conductivity_profile(y,pml.Δ,pml.depth,2,SIDE)
+        end
+    end
 
     Base.show(io::IO,::PML{Union{}}) = print("PML()")
     Base.show(io::IO,pml::PML{DIM,SIDE}) where {DIM,SIDE} = print("PML{$DIM,$SIDE}($(pml.depth))")
@@ -78,13 +91,14 @@ end
 mutable struct cPML{DIM,SIDE,FIN}<:AbstractBL{DIM,SIDE}
     depth::Float64
     Δ::NTuple{2,NTuple{2,Float64}} # tuple of tuple of depths
+    bounds::Array{Float64,1}
 
     cPML() = new{Union{},Union{},false}()
-    cPML{DIM,SIDE}() where {DIM,SIDE} = new{DIM,SIDE,false}(NaN,((NaN,NaN),(NaN,NaN)))
-    cPML{DIM,SIDE}(depth::Number) where {DIM,SIDE} = new{DIM,SIDE,true}(depth,((NaN,NaN),(NaN,NaN)))
-    function cPML{DIM,SIDE}(depth::Number,Δ::NTuple{2,NTuple{2,Number}}) where {DIM,SIDE}
+    cPML{DIM,SIDE}() where {DIM,SIDE} = new{DIM,SIDE,false}(NaN,((NaN,NaN),(NaN,NaN)),[-Inf,Inf])
+    cPML{DIM,SIDE}(depth::Number,bounds::Array=[-Inf,Inf]) where {DIM,SIDE} = new{DIM,SIDE,true}(depth,((NaN,NaN),(NaN,NaN)),bounds)
+    function cPML{DIM,SIDE}(depth::Number,Δ::NTuple{2,NTuple{2,Number}},bounds::Array) where {DIM,SIDE}
         @assert depth>0 "cannot have cPML with 0 depth"
-        new{DIM,SIDE,true}(depth,Δ)
+        new{DIM,SIDE,true}(depth,Δ,bounds)
     end
     (cpml::cPML{DIM,SIDE,false})(depth::Number,Δ::NTuple{2,NTuple{2,Number}}) where {DIM,SIDE} = cPML{DIM,SIDE}(depth,Δ)
     (cpml::cPML{DIM,SIDE,true})(depth::Number,Δ::NTuple{2,NTuple{2,Number}}) where {DIM,SIDE} = cPML{DIM,SIDE}(cpml.depth,Δ)
@@ -92,8 +106,20 @@ mutable struct cPML{DIM,SIDE,FIN}<:AbstractBL{DIM,SIDE}
     (cpml::cPML{DIM,SIDE,true})(args...) where {DIM,SIDE} = cpml
 
     (cpml::cPML{DIM,SIDE,true})(x::Number) where {DIM,SIDE} = conj_conductivity_profile(x,cpml.Δ,cpml.depth,DIM,SIDE)
-    (cpml::cPML{1,SIDE,true})(x::Number,y::Number) where {SIDE} = conj_conductivity_profile(x,cpml.Δ,cpml.depth,1,SIDE)
-    (cpml::cPML{2,SIDE,true})(x::Number,y::Number) where {SIDE} = conj_conductivity_profile(y,cpml.Δ,cpml.depth,2,SIDE)
+    function (cpml::cPML{1,SIDE,true})(x::Number,y::Number) where {SIDE}
+        if cpml.bounds[1] ≤ y ≤ cpml.bounds[2]
+            return conj_conductivity_profile(x,cpml.Δ,cpml.depth,1,SIDE)
+        else
+            return conductivity_profile(x,cpml.Δ,cpml.depth,1,SIDE)
+        end
+    end
+    function (cpml::cPML{2,SIDE,true})(x::Number,y::Number) where {SIDE}
+        if cpml.bounds[1] ≤ x ≤ cpml.bounds[2]
+            return conj_conductivity_profile(y,cpml.Δ,cpml.depth,2,SIDE)
+        else
+            return conductivity_profile(y,cpml.Δ,cpml.depth,2,SIDE)
+        end
+    end
 
     Base.show(io::IO,::cPML{Union{}}) = print("cPML()")
     Base.show(io::IO,cpml::cPML{DIM,SIDE}) where {DIM,SIDE} = print("cPML{$DIM,$SIDE}($(cpml.depth))")
@@ -863,7 +889,7 @@ apply_args(x::MatchedBC{DIM,SIDE,CS1,BC1,BC2,false},
 apply_args(x::MatchedBC{DIM,SIDE,CS1,BC1,BC2,true}, args...; N, kwargs...) where {DIM,SIDE,CS1,BC1,BC2} = x
 # apply_args(x::AbstractBL, args...; Δ, kwargs...) = x(Δ)
 apply_args(x::noBL, args...; kwargs...) = x
-apply_args(x::AbstractBL, args...; depth::Number=x.depth, Δ, kwargs...) = x(depth,Δ)
+apply_args(x::AbstractBL, args...; depth::Number=x.depth, Δ, bounds=x.bounds, kwargs...) = x(depth,Δ,bounds)
 
 reorder_side(bcs::Tuple) = reorder_side(bcs...)
 reorder_side(bc,bcs...) = typeof(get_side(bc))<:Val{1} ? (bc,reorder_side(bcs...)...) : (reorder_side(bcs...)...,bc)

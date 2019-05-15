@@ -65,4 +65,7 @@ add_planar_waveguides,
 add_pc_waveguide,
 add_pc_waveguides
 
+include("Bound.jl")
+using .Bound
+
 end # module

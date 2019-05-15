@@ -40,7 +40,7 @@ function add_planar_waveguide(sys::System; width::Number, index::Number, directi
     waveguide_domains = planar_waveguide_domains(width, index, direction, x0, y0, waveguide_number, background_index)
     return System(vcat(waveguide_domains,sys.domains))
 end
-function add_planar_waveguide(sim::Simulation; width::Number, index::Number, direction::Symbol, x0::Number, y0::Number, background_index::Number=sim.sys.domains[end].params[:n₁])
+function add_planar_waveguide(sim::Simulation; width::Number, index::Number, direction::Symbol, x0::Number, y0::Number, background_index::Number=sim.sys.domains[end].domain_params[:n₁])
     sys = add_planar_waveguide(sim.sys; width=width, index=index, direction=direction, x0=x0, y0=y0, background_index=background_index)
     return Simulation(sim; :sys => sys)
 end

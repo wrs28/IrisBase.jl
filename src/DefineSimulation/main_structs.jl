@@ -208,7 +208,7 @@ ssort(a;kwargs...)=(a,)
 
 cumsum_tuple(a::Tuple) = reverse(_cumsum_tuple(reverse(a)...))
 _cumsum_tuple(a,b...) = (sum(b),_cumsum_tuple(b...)...)
-_cumsum_tuple(a) = 0
+_cumsum_tuple(a) = (0,)
 
 
 """

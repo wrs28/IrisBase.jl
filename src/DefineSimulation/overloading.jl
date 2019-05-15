@@ -71,7 +71,7 @@ boundary object for Simulation.
 
 `bl_depth` scalar or array of boundary layer depths
 # """
-function Boundary(;∂Ω=fill(NaN,4), bc::TBC=DirichletBC(), bl::TBL=noBL(), depth::Real=0, r=false, kwargs...) where {TBC<:AbstractBC,TBL<:AbstractBL}
+function Boundary(;∂Ω=fill(NaN,4), bc::TBC=DirichletBC(), bl::TBL=noBL(), depth::Real=0, r=NaN, kwargs...) where {TBC<:AbstractBC,TBL<:AbstractBL}
     if !isnan(r)
         @assert TBC<:AbstractBC "type of bc is $bc. when radius is specified, bc must be a boundary condition"
         @assert TBL<:AbstractBL "type of bl is $bl. when radius is specified, bl must be a boundary layer"
@@ -99,17 +99,17 @@ function Boundary(;∂Ω=fill(NaN,4), bc::TBC=DirichletBC(), bl::TBL=noBL(), dep
         end
         BLs = ( noBL{1,1}(0), BL, noBL{2,1}(0), noBL{2,2}(0) )
     else
-        if TBC == DirichletBC
+        if TBC <: DirichletBC
             BCs = (DirichletBC{1,1}(),DirichletBC{1,2}(),DirichletBC{2,1}(),DirichletBC{2,2}())
-        elseif bc == NeumannBC
+        elseif bc <: NeumannBC
             BCs = (NeumannBC{1,1}(),NeumannBC{1,2}(),NeumannBC{2,1}(),NeumannBC{2,2}())
-        elseif bc == FloquetBC
+        elseif bc <: FloquetBC
             BCs = (FloquetBC{1,1}(),FloquetBC{1,2}(),FloquetBC{2,1}(),FloquetBC{2,2}())
         else
             throw(ArgumentError("$(bc) incompatible with this wrapper signature of Boundary. For more control, use another signature"))
         end
 
-        if TBL == PML
+        if TBL <: PML
             BLs = (PML{1,1}(depth),PML{1,2}(depth),PML{2,1}(depth),PML{2,2}(depth))
         elseif TBL == cPML
             BLs = (cPML{1,1}(depth),cPML{1,2}(depth),cPML{2,1}(depth),cPML{2,2}(depth))

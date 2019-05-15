@@ -3,14 +3,20 @@ module Shapes
 using Formatting,
 RecipesBase
 
-export AbstractShape,
-Circle,
+export Circle,
 Ellipse,
 Square,
 Rectangle,
 Parallelogram,
 DeformedDisk,
 Universe
+
+export AbstractShape,
+AbstractCircle,
+AbstractEllipse,
+AbstractSquare,
+AbstractRectangle,
+AbstractParallelogram
 
 abstract type AbstractShape end
 abstract type AbstractParallelogram <: AbstractShape end
@@ -136,7 +142,7 @@ struct Rectangle <: AbstractRectangle
 
     function (r::Rectangle)(x,y)
         xrot, yrot = rotate(x-r.x0, y-r.y0, r.cosθ, r.sinθ)
-        return 0 ≤ xrot ≤ r.a  &&  0 ≤ yrot ≤ r.a
+        return 0 ≤ xrot ≤ r.a  &&  0 ≤ yrot ≤ r.b
     end
 
     Base.show(io::IO, rect::Rectangle) = print(io, "Rectangle(a=$(fmt("2.2f",rect.a)), b=$(fmt("2.2f",rect.b)), x0=$(fmt("2.2f",rect.x0)), y0=$(fmt("2.2f",rect.y0)), θ=$(fmt("2.2f",rect.θ)))")
@@ -256,15 +262,15 @@ function rotate(x::Real,y::Real,cosθ::Real,sinθ::Real)
     return xrot, yrot
 end
 
-# function rotate(x,y,cosθ::Number,sinθ::Number)
-#     xyrot = rotate.(x,y,cosθ,sinθ)
-#     xrot = Array{Float64}(undef,size(xyrot))
-#     yrot = Array{Float64}(undef,size(xyrot))
-#     for i ∈ eachindex(xyrot)
-#         xrot[i] = xyrot[i][1]
-#         yrot[i] = xyrot[i][2]
-#     end
-#     return xrot, yrot
-# end
+function rotate(x::AbstractArray,y::AbstractArray,cosθ::Real,sinθ::Real)
+    xyrot = rotate.(x,y,cosθ,sinθ)
+    xrot = Array{Float64}(undef,size(xyrot))
+    yrot = Array{Float64}(undef,size(xyrot))
+    for i ∈ eachindex(xyrot)
+        xrot[i] = xyrot[i][1]
+        yrot[i] = xyrot[i][2]
+    end
+    return xrot, yrot
+end
 
 end #module

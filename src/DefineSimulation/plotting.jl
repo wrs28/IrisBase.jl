@@ -156,17 +156,19 @@ struct PaintBucket{Tbnd}
 
         x_f_start = sim.bnd.∂Ω[1][1]
         x_f_stop  = sim.bnd.∂Ω[1][2]
-        x_f = sim.dis.x[1][:]
+        x_f = LinRange(sim.dis.x[1][1],sim.dis.x[1][end],length(sim.dis.x[1]))#sim.dis.x[1][:]
 
         y_f_start = sim.bnd.∂Ω[2][1]
         y_f_stop  = sim.bnd.∂Ω[2][2]
-        y_f = sim.dis.x[2][:]
+        y_f = LinRange(sim.dis.x[2][1],sim.dis.x[2][end],length(sim.dis.x[2]))#sim.dis.x[2][:]
 
         x_t_start = ∂Ω[1][1]
         x_t_stop  = ∂Ω[1][2]
+        x_t = LinRange(x_t_start, x_t_stop, M[1])
 
         y_t_start = ∂Ω[2][1]
         y_t_stop  = ∂Ω[2][2]
+        y_t = LinRange(y_t_start, y_t_stop, M[2])
 
         ε = sim.sys.ε
         # ε = (1 .+ 1im*sim.sys.Σe/10).*sim.sys.ε
@@ -348,7 +350,7 @@ end
                     color := fill_color
                     alpha := .25
                     fill --> (0,.5,fill_color)
-                    pb.pml_data[i]
+                    pb.pml_data[2*(k-1)+i]
                 end
             end
             if isDirichlet(sim.bnd.bc[k][i]) | isNeumann(sim.bnd.bc[k][i])
