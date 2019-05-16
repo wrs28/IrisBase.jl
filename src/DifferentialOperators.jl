@@ -90,10 +90,10 @@ struct OperatorDefinition{ORD,DIM,TCS,TBC11,TBC12,TBC21,TBC22,TBL11,TBL12,TBL21,
         h1 = typeof(bls[1])<:Tuple{noBL,noBL} ? zeros(Int,size(xd[1],1),size(x[2],1)) : 1im*(bls[1][1].(xd[1],x[2]') + bls[1][2].(xd[1],x[2]'))
         h2 = typeof(bls[2])<:Tuple{noBL,noBL} ? zeros(Int,size(x[2],1),size(xd[2],1)) : 1im*(bls[2][1].(x[1],xd[2]') + bls[2][2].(x[1],xd[2]'))
         hd = (h1,h2)
-        f1 = typeof(bls[1])<:Tuple{noBL,noBL} ? zeros(Int,size(x[1],1),size(x[2]),1) : 1im*(-reverse(cumsum(bls[1][1].(reverse(x[1]),x[2]');dims=2);dims=1) + cumsum(bls[1][2].(x[1],x[2]');dims=2))*dx[1]
+        f1 = typeof(bls[1])<:Tuple{noBL,noBL} ? zeros(Int,size(x[1],1),size(x[2],1)) : 1im*(-reverse(cumsum(bls[1][1].(reverse(x[1]),x[2]');dims=2);dims=1) + cumsum(bls[1][2].(x[1],x[2]');dims=2))*dx[1]
         f2 = zeros(Int,size(x[1],1),size(x[2],1))
         f = (f1,f2)
-        fd1 = typeof(bls[1])<:Tuple{noBL,noBL} ? zeros(Int,size(xd[1],1),size(xd[2]),1) : 1im*(-reverse(cumsum(bls[1][1].(reverse(xd[1]),xd[2]');dims=2);dims=1) + cumsum(bls[1][2].(xd[1],xd[2]');dims=2))*dx[1]
+        fd1 = typeof(bls[1])<:Tuple{noBL,noBL} ? zeros(Int,size(xd[1],1),size(xd[2],1)) : 1im*(-reverse(cumsum(bls[1][1].(reverse(xd[1]),xd[2]');dims=2);dims=1) + cumsum(bls[1][2].(xd[1],xd[2]');dims=2))*dx[1]
         fd2 = zeros(Int,size(xd[1],1),size(xd[2],1))
         fd = (fd1,fd2)
 
