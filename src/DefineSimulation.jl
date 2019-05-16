@@ -11,6 +11,7 @@ using ..Bravais,
 Formatting,
 Interpolations,
 IterTools,
+ProgressMeter,
 RecipesBase,
 Statistics,
 StaticArrays
@@ -28,6 +29,7 @@ TwoLevelSystem,
 Simulation,
 which_domain
 
+include("DefineSimulation/defaults.jl")
 include("DefineSimulation/domain_types.jl")
 include("DefineSimulation/main_structs.jl")
 include("DefineSimulation/construction.jl")

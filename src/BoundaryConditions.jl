@@ -706,35 +706,43 @@ struct MatchedBC{DIM,SIDE,CS,TBC1,TBC2,FIN} <: AbstractBC{DIM,SIDE}
     function MatchedBC{DIM,SIDE,Cartesian,BC1,BC2}(outgoing_qns, incoming_qns, N; kwargs...) where {DIM,SIDE,BC1,BC2}
         common = intersect(outgoing_qns,incoming_qns)
         @assert isempty(common) "outgoing and incoming sets can share no common channel, but their intersection is $common"
-
         @assert haskey(kwargs,:dx) "MatchedBC requires kwarg :dx"
+        dim_perp = mod1(DIM+1,2)
         dx = kwargs[:dx]
         xmin = haskey(kwargs,:xmin) ? kwargs[:xmin] : (0.0,0.0)
         xmax = (xmin[1]+(N[1]-1/2)*dx[1],xmin[2]+(N[2]-1/2)*dx[2])
-        DX = dx[mod1(DIM+1,2)]
-        L = (xmax.-xmin)[mod1(DIM+1,2)]
+        DX = dx[dim_perp]
+        L = (xmax.-xmin)[dim_perp]
+
 
         q_out = length(outgoing_qns)
         q_in = length(incoming_qns)
 
         M  = Array{Int}(undef,q_out+q_in)
         direction = Array{Int}(undef,q_out+q_in)
-        weights = Array{ComplexF64}(undef,(q_out+q_in)*N[2]^2)
-        I1 = Array{Int}(undef,(q_out+q_in)*N[2]^2)
-        I2 = Array{Int}(undef,(q_out+q_in)*N[2]^2)
-        J1 = Array{Int}(undef,(q_out+q_in)*N[2]^2)
-        J2 = Array{Int}(undef,(q_out+q_in)*N[2]^2)
-        M_inds = Array{Int}(undef,(q_out+q_in)*N[2]^2)
+        weights = Array{ComplexF64}(undef,(q_out+q_in)*N[dim_perp]^2)
+        I1 = Array{Int}(undef,(q_out+q_in)*N[dim_perp]^2)
+        I2 = Array{Int}(undef,(q_out+q_in)*N[dim_perp]^2)
+        J1 = Array{Int}(undef,(q_out+q_in)*N[dim_perp]^2)
+        J2 = Array{Int}(undef,(q_out+q_in)*N[dim_perp]^2)
+        M_inds = Array{Int}(undef,(q_out+q_in)*N[dim_perp]^2)
         M_subinds = Array{Array{Int,1},1}(undef,(q_out+q_in))
         idx = 1
         midx = 1
         for m ∈ outgoing_qns
             am, bm, km = abkm(m,L,BC1,BC2)
-            for i ∈ 1:N[2], j ∈ 1:N[2]
-                I1[idx] = N[1]
-                J1[idx] = i
-                I2[idx] = N[1]
-                J2[idx] = j
+            for i ∈ 1:N[dim_perp], j ∈ 1:N[dim_perp]
+                if SIDE==1
+                    I1[idx] = 1
+                    J1[idx] = i
+                    I2[idx] = 1
+                    J2[idx] = j
+                else
+                    I1[idx] = N[DIM]
+                    J1[idx] = i
+                    I2[idx] = N[DIM]
+                    J2[idx] = j
+                end
                 ϕi = am*exp(1im*km*DX*i)+bm*exp(-1im*km*DX*i)
                 ϕj = am*exp(1im*km*DX*j)+bm*exp(-1im*km*DX*j)
                 weights[idx] = DX*ϕi*ϕj
@@ -742,18 +750,25 @@ struct MatchedBC{DIM,SIDE,CS,TBC1,TBC2,FIN} <: AbstractBC{DIM,SIDE}
                 idx += 1
             end
             M[midx] = m
-            M_subinds[midx] = (midx-1)*N[2]^2 .+ (1:N[2]^2)
-            direction[midx] = 1
+            M_subinds[midx] = (midx-1)*N[dim_perp]^2 .+ (1:N[dim_perp]^2)
+            direction[midx] = SIDE==1 ? -1 : 1
             midx +=1
         end
         qidx = midx-1
         for m ∈ incoming_qns
             am, bm, km = abkm(m,L,BC1,BC2)
-            for i ∈ 1:N[2], j ∈ 1:N[2]
-                I1[idx] = N[1]
-                J1[idx] = i
-                I2[idx] = N[1]
-                J2[idx] = j
+            for i ∈ 1:N[dim_perp], j ∈ 1:N[dim_perp]
+                if SIDE==1
+                    I1[idx] = 1
+                    J1[idx] = i
+                    I2[idx] = 1
+                    J2[idx] = j
+                else
+                    I1[idx] = N[DIM]
+                    J1[idx] = i
+                    I2[idx] = N[DIM]
+                    J2[idx] = j
+                end
                 ϕi = am*exp(1im*km*DX*i)+bm*exp(-1im*km*DX*i)
                 ϕj = am*exp(1im*km*DX*j)+bm*exp(-1im*km*DX*j)
                 weights[idx] = DX*ϕi*ϕj
@@ -761,8 +776,8 @@ struct MatchedBC{DIM,SIDE,CS,TBC1,TBC2,FIN} <: AbstractBC{DIM,SIDE}
                 idx += 1
             end
             M[midx] = m
-            M_subinds[midx] = qidx*N[2]^2 .+ (midx-qidx-1)*N[2]^2 .+ (1:N[2]^2)
-            direction[midx] = -1
+            M_subinds[midx] = qidx*N[dim_perp]^2 .+ (midx-qidx-1)*N[dim_perp]^2 .+ (1:N[dim_perp]^2)
+            direction[midx] = SIDE==1 ? 1 : -1
             midx += 1
         end
         i1 = Array{Array{Int,1},1}(undef,length(M))
@@ -779,6 +794,7 @@ struct MatchedBC{DIM,SIDE,CS,TBC1,TBC2,FIN} <: AbstractBC{DIM,SIDE}
         end
         return new{DIM,SIDE,Cartesian,BC1,BC2,true}(outgoing_qns, incoming_qns, Tuple(N), Tuple(dx), Tuple(xmin), xmax, i1, j1, i2, j2, v, M, direction)
     end
+    # MatchedBC{DIM,SIDE,Cartesian,BC1,BC2}(args...; kwargs...) where {DIM,SIDE,BC1,BC2} = MatchedBC{DIM,SIDE,Cartesian}(args...; kwargs...)
 
     # convenience constructors for MatchedBC, starting from partially initialized
     # (mbc::MatchedBC{DIM,SIDE,_1,_2,_3,false})(N, coordinate_system::Type{CS}, bc1::Type{BC1}, bc2::Type{BC2}, args...; kwargs...) where {DIM,SIDE,_1,_2,_3,CS,BC1,BC2} = MatchedBC{DIM,SIDE,CS,BC1,BC2}(mbc.outgoing_qns,mbc.incoming_qns,N; kwargs...)
@@ -802,14 +818,12 @@ struct MatchedBC{DIM,SIDE,CS,TBC1,TBC2,FIN} <: AbstractBC{DIM,SIDE}
     end
     # longitudinal propagator for waveguide cartesian
     function (MBC::MatchedBC{DIM,SIDE,Cartesian,BC1,BC2})(k,args...) where {DIM,SIDE,BC1,BC2}
-        am = Array{ComplexF64}(undef,length(MBC.QNs))
-        bm = Array{ComplexF64}(undef,length(MBC.QNs))
         km = Array{Float64}(undef,length(MBC.QNs))
         for i ∈ eachindex(MBC.QNs)
-            am[i], bm[i], km[i] = abkm.(MBC.QNs[i],(MBC.xmax.-MBC.xmin)[mod1(DIM+1,2)],BC1,BC2)
+            _, _, km[i] = abkm.(MBC.QNs[i],(MBC.xmax.-MBC.xmin)[mod1(DIM+1,2)],BC1,BC2)
         end
         β = @. MBC.direction*sqrt(k^2-km^2 + 0.0im)
-        βdx = β*MBC.dx[mod1(DIM+1,2)]
+        βdx = β*MBC.dx[DIM]#[mod1(DIM+1,2)]
         num = 1 .+ 1im*βdx/2
         den = 1 .- 1im*βdx/2
         return num./den
@@ -823,29 +837,32 @@ end
 # coefficients and transverse momentum for Cartesian guided mode system
 function abkm(m::Int,L::Real,bc1::Type{BC1},bc2::Type{BC2}) where {BC1,BC2}
     if BC1<:DirichletBC && BC2<:DirichletBC
-        am = sqrt(2/L)/2im
+        am =  sqrt(2/L)/2im
         bm = -sqrt(2/L)/2im
         km = m*π/L
     elseif BC1<:DirichletBC && BC2<:NeumannBC
-        am = sqrt(2/L)/2im
+        throw(ErrorException("haven't done Dirichlet, Neumann pairing yet"))
+        am =  sqrt(2/L)/2im
         bm = -sqrt(2/L)/2im
         km = m*π/L
     elseif BC1<:NeumannBC   && BC2<:DirichletBC
-        am = sqrt(2/L)/2im
+        throw(ErrorException("haven't done Dirichlet, Neumann pairing yet"))
+        am =  sqrt(2/L)/2im
         bm = -sqrt(2/L)/2im
         km = m*π/L
     elseif BC1<:DirichletBC && BC2<:NeumannBC
-        am = sqrt(2/L)/2im
+        throw(ErrorException("haven't done Dirichlet, Neumann pairing yet"))
+        am =  sqrt(2/L)/2im
         bm = -sqrt(2/L)/2im
         km = m*π/L
     elseif BC1<:NeumannBC   && BC2<:NeumannBC
-        am = sqrt(2/L)/2im
-        bm = -sqrt(2/L)/2im
+        am = sqrt(2/L)/2
+        bm = sqrt(2/L)/2
         km = m*π/L
     elseif BC1<:FloquetBC  && BC2<:FloquetBC
-        am = sqrt(2/L)/2im
-        bm = -sqrt(2/L)/2im
-        km = m*π/L
+        am = m<0 ?  sqrt(2/L)/2im : sqrt(2/L)/2
+        bm = m<0 ? -sqrt(2/L)/2im : sqrt(2/L)/2
+        km = abs(m)*2π/L
     else
         throw(Exception("unrecognized transverse boundary condition combination $BC1 & $BC2"))
     end
