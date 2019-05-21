@@ -100,9 +100,13 @@ mutable struct cPML{DIM,SIDE,FIN}<:AbstractBL{DIM,SIDE}
         @assert depth>0 "cannot have cPML with 0 depth"
         new{DIM,SIDE,true}(depth,Δ,bounds)
     end
-    (cpml::cPML{DIM,SIDE,false})(depth::Number,Δ::NTuple{2,NTuple{2,Number}}) where {DIM,SIDE} = cPML{DIM,SIDE}(depth,Δ)
-    (cpml::cPML{DIM,SIDE,true})(depth::Number,Δ::NTuple{2,NTuple{2,Number}}) where {DIM,SIDE} = cPML{DIM,SIDE}(cpml.depth,Δ)
-    (cpml::cPML{DIM,SIDE,true})(Δ::NTuple{2,NTuple{2,Number}}) where {DIM,SIDE} = cPML{DIM,SIDE}(cpml.depth,Δ)
+    # add depth and and system size to PML
+    (cpml::cPML{DIM,SIDE,false})(depth::Number,Δ::NTuple{2,NTuple{2,Number}},bounds::Array) where {DIM,SIDE} = cPML{DIM,SIDE}(depth,Δ,bounds)
+    # add system size to initialized PML even if given depth
+    (cpml::cPML{DIM,SIDE,true})(depth::Number,Δ::NTuple{2,NTuple{2,Number}},bounds::Array) where {DIM,SIDE} = cPML{DIM,SIDE}(cpml.depth,Δ,cpml.bounds)
+    # add system size to initialized PML
+    (cpml::cPML{DIM,SIDE,true})(Δ::NTuple{2,NTuple{2,Number}}) where {DIM,SIDE} = cPML{DIM,SIDE}(cpml.depth,Δ,cpml.bounds)
+    # if PML initialized, do nothing unless given depth and/or system size
     (cpml::cPML{DIM,SIDE,true})(args...) where {DIM,SIDE} = cpml
 
     (cpml::cPML{DIM,SIDE,true})(x::Number) where {DIM,SIDE} = conj_conductivity_profile(x,cpml.Δ,cpml.depth,DIM,SIDE)
@@ -709,11 +713,10 @@ struct MatchedBC{DIM,SIDE,CS,TBC1,TBC2,FIN} <: AbstractBC{DIM,SIDE}
         @assert haskey(kwargs,:dx) "MatchedBC requires kwarg :dx"
         dim_perp = mod1(DIM+1,2)
         dx = kwargs[:dx]
-        xmin = haskey(kwargs,:xmin) ? kwargs[:xmin] : (0.0,0.0)
-        xmax = (xmin[1]+(N[1]-1/2)*dx[1],xmin[2]+(N[2]-1/2)*dx[2])
+        xmin = haskey(kwargs,:xmin) ? kwargs[:xmin] : nothing#(0.0,0.0)
+        xmax = (xmin[1]+N[1]*dx[1],xmin[2]+N[2]*dx[2])
         DX = dx[dim_perp]
         L = (xmax.-xmin)[dim_perp]
-
 
         q_out = length(outgoing_qns)
         q_in = length(incoming_qns)
@@ -743,15 +746,15 @@ struct MatchedBC{DIM,SIDE,CS,TBC1,TBC2,FIN} <: AbstractBC{DIM,SIDE}
                     I2[idx] = N[DIM]
                     J2[idx] = j
                 end
-                ϕi = am*exp(1im*km*DX*i)+bm*exp(-1im*km*DX*i)
-                ϕj = am*exp(1im*km*DX*j)+bm*exp(-1im*km*DX*j)
+                ϕi = am*exp(1im*km*DX*(1/2+i-1))+bm*exp(-1im*km*DX*(1/2+i-1))
+                ϕj = am*exp(1im*km*DX*(1/2+j-1))+bm*exp(-1im*km*DX*(1/2+j-1))
                 weights[idx] = DX*ϕi*ϕj
                 M_inds[idx] = midx
                 idx += 1
             end
             M[midx] = m
             M_subinds[midx] = (midx-1)*N[dim_perp]^2 .+ (1:N[dim_perp]^2)
-            direction[midx] = SIDE==1 ? -1 : 1
+            direction[midx] = SIDE==1 ? 1 : 1
             midx +=1
         end
         qidx = midx-1
@@ -769,15 +772,15 @@ struct MatchedBC{DIM,SIDE,CS,TBC1,TBC2,FIN} <: AbstractBC{DIM,SIDE}
                     I2[idx] = N[DIM]
                     J2[idx] = j
                 end
-                ϕi = am*exp(1im*km*DX*i)+bm*exp(-1im*km*DX*i)
-                ϕj = am*exp(1im*km*DX*j)+bm*exp(-1im*km*DX*j)
+                ϕi = am*exp(1im*km*DX*(1/2+i-1))+bm*exp(-1im*km*DX*(1/2+i-1))
+                ϕj = am*exp(1im*km*DX*(1/2+j-1))+bm*exp(-1im*km*DX*(1/2+j-1))
                 weights[idx] = DX*ϕi*ϕj
                 M_inds[idx] = midx
                 idx += 1
             end
             M[midx] = m
             M_subinds[midx] = qidx*N[dim_perp]^2 .+ (midx-qidx-1)*N[dim_perp]^2 .+ (1:N[dim_perp]^2)
-            direction[midx] = SIDE==1 ? 1 : -1
+            direction[midx] = SIDE==1 ? -1 : -1
             midx += 1
         end
         i1 = Array{Array{Int,1},1}(undef,length(M))
