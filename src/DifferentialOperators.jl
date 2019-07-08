@@ -84,17 +84,17 @@ struct OperatorDefinition{ORD,DIM,TCS,TBC11,TBC12,TBC21,TBC22,TBL11,TBL12,TBL21,
         # bcs = apply_args(bcs, CS() ; N=N, dx=dx, xmin=xmin, lattice=lattice, kwargs...)
         # depth = haskey(kwargs,:depth) ? kwargs[:depth] : 0
         # bls = apply_args(bls; Δ=Δ, depth=depth)
-        h1 = typeof(bls[1])<:Tuple{noBL,noBL} ? zeros(Int,size(x[1],1),size(x[2],1)) : 1im*(bls[1][1].(x[1],x[2]') + bls[1][2].(x[1],x[2]'))
-        h2 = typeof(bls[2])<:Tuple{noBL,noBL} ? zeros(Int,size(x[1],1),size(x[2],1)) : 1im*(bls[2][1].(x[1],x[2]') + bls[2][2].(x[1],x[2]'))
+        h1 = typeof(bls[1])<:Tuple{noBL,noBL} ? zeros(Int,size(x[1],1),1) : 1im*(bls[1][1].(x[1],x[2][1]) + bls[1][2].(x[1],x[2][1]))
+        h2 = typeof(bls[2])<:Tuple{noBL,noBL} ? zeros(Int,1,size(x[2],1)) : 1im*(bls[2][1].(x[1][1],x[2]) + bls[2][2].(x[1][1],x[2]))
         h = (h1,h2)
-        h1 = typeof(bls[1])<:Tuple{noBL,noBL} ? zeros(Int,size(xd[1],1),size(x[2],1)) : 1im*(bls[1][1].(xd[1], x[2]') + bls[1][2].(xd[1], x[2]'))
-        h2 = typeof(bls[2])<:Tuple{noBL,noBL} ? zeros(Int,size(x[1],1),size(xd[2],1)) : 1im*(bls[2][1].( x[1],xd[2]') + bls[2][2].( x[1],xd[2]'))
+        h1 = typeof(bls[1])<:Tuple{noBL,noBL} ? zeros(Int,size(xd[1],1),1) : 1im*(bls[1][1].(xd[1], x[2][1]) + bls[1][2].(xd[1], x[2][1]))
+        h2 = typeof(bls[2])<:Tuple{noBL,noBL} ? zeros(Int,1,size(xd[2],1)) : 1im*(bls[2][1].( x[1][1],xd[2]) + bls[2][2].( x[1][1],xd[2]))
         hd = (h1,h2)
-        f1 = typeof(bls[1])<:Tuple{noBL,noBL} ? zeros(Int,size(x[1],1),size(x[2],1)) : 1im*(-reverse(cumsum(bls[1][1].(reverse(x[1]),x[2]');dims=2);dims=1) + cumsum(bls[1][2].(x[1],x[2]');dims=2))*dx[1]
-        f2 = zeros(Int,size(x[1],1),size(x[2],1))
+        f1 = typeof(bls[1])<:Tuple{noBL,noBL} ? zeros(Int,size(x[1],1),1) : 1im*(-reverse(cumsum(bls[1][1].(reverse(x[1]),x[2][1]);dims=2);dims=1) + cumsum(bls[1][2].(x[1],x[2][1]);dims=2))*dx[1]
+        f2 = zeros(Int,1,size(x[1],1))
         f = (f1,f2)
-        fd1 = typeof(bls[1])<:Tuple{noBL,noBL} ? zeros(Int,size(xd[1],1),size(xd[2],1)) : 1im*(-reverse(cumsum(bls[1][1].(reverse(xd[1]),xd[2]');dims=2);dims=1) + cumsum(bls[1][2].(xd[1],xd[2]');dims=2))*dx[1]
-        fd2 = zeros(Int,size(xd[1],1),size(xd[2],1))
+        fd1 = typeof(bls[1])<:Tuple{noBL,noBL} ? zeros(Int,size(xd[1],1),1) : 1im*(-reverse(cumsum(bls[1][1].(reverse(xd[1]),x[2][1]);dims=2);dims=1) + cumsum(bls[1][2].(xd[1],x[2][1]);dims=2))*dx[1]
+        fd2 = zeros(Int,1,size(xd[2],1))
         fd = (fd1,fd2)
 
         pol = haskey(kwargs,:polarity) ? typeof(kwargs[:polarity]) : (ORD==1 ? Central : Union{})
@@ -210,26 +210,32 @@ struct OperatorConstructor{ORD,DIM,CS,TBL1,TBL2,TBK,TB1,TB2,TOD}
         cols = vcat(bulk_rows_on_site,bulk_rows_nn.+1,bulk_rows_nn,bnd1_rows,bnd2_rows)
         vals = get_vals(OC,args...)
 
-        if CS<:Polar && DIM==2
-            rf = def.x[1] .+ def.f[1]/args[1]
-            rf⁻² = 1 ./rf.^2
-            S = spdiagm(0=>rf⁻²)
-        else
-            S = DIM==1 ? sparse(1.0*I,N[2],N[2]) : sparse(1.0*I,N[1],N[1])
-        end
+        # if CS<:Polar && DIM==2
+            # rf = def.x[1] .+ def.f[1]/args[1]
+            # rf⁻² = 1 ./rf.^2
+            # S = spdiagm(0=>rf⁻²[:])
+        # else
+            # S = DIM==1 ? sparse(1.0*I,N[2],N[2]) : sparse(1.0*I,N[1],N[1])
+        # end
         RT, CT, VT = Int[], Int[], eltype(vals)[]
         if DIM==1
             for j ∈ 1:N[2]
                 S = sparse([j],[j],[1.0],N[2],N[2])
-                rt,ct,vt = findnz(kron(S,sparse(rows,cols,vals[:,j],N[1],N[1],+)))
+                rt,ct,vt = findnz(kron(S,sparse(rows,cols,vals,N[1],N[1],+)))
                 append!(RT,rt)
                 append!(CT,ct)
                 append!(VT,vt)
             end
         else
             for i ∈ 1:N[1]
-                S = sparse([i],[i],[1.0],N[1],N[1])
-                rt,ct,vt = findnz(kron(sparse(rows,cols,vals[i,:],N[2],N[2],+),S))
+                if CS<:Polar
+                    rf = def.x[1][i] .+ def.f[1][i]/args[1]
+                    rf⁻² = 1 ./rf.^2
+                    S = sparse([i],[i],[rf⁻²],N[1],N[1])
+                else
+                    S = sparse([i],[i],[1.0],N[1],N[1])
+                end
+                rt,ct,vt = findnz(kron(sparse(rows,cols,vals,N[2],N[2],+),S))
                 append!(RT,rt)
                 append!(CT,ct)
                 append!(VT,vt)
@@ -262,9 +268,9 @@ struct OperatorConstructor{ORD,DIM,CS,TBL1,TBL2,TBK,TB1,TB2,TOD}
         rcv = rcv.(i1, j1, i2, j2, vals)
         N = OC.N
         if CS<:Polar && DIM==2
-            rf = OC.definition.x[1] .+ OC.definition.f[1]/args[1]
+            rf = OC.definition.x[1] .+ OC.definition.f[1][end,:]/args[1]
             rf⁻² = 1 ./rf.^2
-            S = kron(sparse(I,N[2],N[2]),spdiagm(0=>rf⁻²))
+            S = kron(sparse(I,N[2],N[2]),spdiagm(0=>rf⁻²[:]))
             RCV = Array{RowColVal{eltype(S)},1}(undef,length(rcv))
         else
             S = sparse(I,prod(N),prod(N))
@@ -293,9 +299,9 @@ struct OperatorConstructor{ORD,DIM,CS,TBL1,TBL2,TBK,TB1,TB2,TOD}
 
         N = OC.N
         if CS<:Polar && DIM==2
-            rf = OC.definition.x[1] .+ OC.definition.f[1]/args[1]
+            rf = OC.definition.x[1] .+ OC.definition.f[1][end,:]/args[1]
             rf⁻² = 1 ./rf.^2
-            S = kron(sparse(I,N[2],N[2]),spdiagm(0=>rf⁻²))
+            S = kron(sparse(I,N[2],N[2]),spdiagm(0=>rf⁻²[:]))
             RCV = Array{RowColVal{eltype(S)},1}(undef,length(rcv))
         else
             S = sparse(I,prod(N),prod(N))
@@ -323,17 +329,17 @@ function get_vals(OC::OperatorConstructor{2,DIM,CS,TBL1,TBL2},args::Vararg{Numbe
     h = 1 .+ OC.definition.hd[DIM]/args[1]
     vals = (1 ./h)/OC.dx[DIM]^2
     if DIM==1
-        bulk_on_site = -(vals[2:end-2,:] + vals[3:end-1,:])
-        bnd1_on_site = -(vals[1:1,:] + vals[2:2,:])
-        bnd2_on_site = -(vals[(end-1):(end-1),:] + vals[end:end,:])
-        bulk_nn = vals[2:N[1],:]
+        bulk_on_site = -(vals[2:end-2] + vals[3:end-1])
+        bnd1_on_site = -(vals[1:1] + vals[2:2])
+        bnd2_on_site = -(vals[(end-1):(end-1)] + vals[end:end])
+        bulk_nn = vals[2:N[1]]
         return vcat(bulk_on_site,bulk_nn,bulk_nn,bnd1_on_site,bnd2_on_site)
     else
-        bulk_on_site = -(vals[:,2:end-2] + vals[:,3:end-1])
-        bnd1_on_site = -(vals[:,1:1] + vals[:,2:2])
-        bnd2_on_site = -(vals[:,(end-1):(end-1)] + vals[:,end:end])
-        bulk_nn = vals[:,2:N[2]]
-        return hcat(bulk_on_site,bulk_nn,bulk_nn,bnd1_on_site,bnd2_on_site)
+        bulk_on_site = -(vals[2:end-2] + vals[3:end-1])
+        bnd1_on_site = -(vals[1:1] + vals[2:2])
+        bnd2_on_site = -(vals[(end-1):(end-1)] + vals[end:end])
+        bulk_nn = vals[2:N[2]]
+        return vcat(bulk_on_site,bulk_nn,bulk_nn,bnd1_on_site,bnd2_on_site)
     end
 end
 function get_vals(OC::OperatorConstructor{2,1,Polar,TBL1,TBL2},args::Vararg{Number,M}) where {M,TD,TBL1,TBL2}
@@ -347,8 +353,8 @@ function get_vals(OC::OperatorConstructor{2,1,Polar,TBL1,TBL2},args::Vararg{Numb
 
     vals = (rf./h)/OC.dx[DIM]^2
     bulk_on_site = -(vals[2:end-2] + vals[3:end-1])
-    bnd1_on_site = -[vals[1] + vals[2]]
-    bnd2_on_site = -[vals[end-1] + vals[end]]
+    bnd1_on_site = -(vals[[1]] + vals[[2]])
+    bnd2_on_site = -(vals[[end-1]] + vals[[end]])
     bulk_nn = vals[2:N[DIM]]
     return vcat(bulk_on_site,bulk_nn,bulk_nn,bnd1_on_site,bnd2_on_site)
 end
@@ -482,10 +488,10 @@ function bulk_op(OD::OperatorDefinition{ORD,DIM,CS}, OC::OperatorConstructor, ar
     h = 1 .+ OC.definition.h[DIM]/args[1]
     if CS<:Polar && DIM==1
         rf = OC.definition.x[DIM] + OC.definition.f[DIM]/args[1]
-        s = RowColVal(OD.N,rf.*h,DIM)
+        s = RowColVal(OD.N,(rf.*h)[:],DIM)
     else
-        # s = RowColVal(OD.N,h,DIM)
-        s = RowColVal(OD.N,h[:])
+        s = RowColVal(OD.N,h[:],DIM)
+        # s = RowColVal(OD.N,h[:])
     end
 
     return DifferentialOperator(OC.bulk,s,(a...)->1)
@@ -521,10 +527,10 @@ function boundary_op(OD::OperatorDefinition{ORD,DIM,CS},OC::OperatorConstructor,
     h = 1 .+ OC.definition.h[DIM]/args[1]
     if CS<:Polar && DIM==1
         rf = OC.definition.x[DIM] + OC.definition.f[DIM]/args[1]
-        s = RowColVal(OD.N,rf.*h,DIM)
+        s = RowColVal(OD.N,(rf.*h)[:],DIM)
     else
-        # s = RowColVal(OD.N,h,DIM)
-        s = RowColVal(OD.N,h[:])
+        s = RowColVal(OD.N,h[:],DIM)
+        # s = RowColVal(OD.N,h[:])
     end
     return DifferentialOperator(rcv, fs, s)
 end
