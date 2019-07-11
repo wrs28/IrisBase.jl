@@ -84,16 +84,16 @@ struct OperatorDefinition{ORD,DIM,TCS,TBC11,TBC12,TBC21,TBC22,TBL11,TBL12,TBL21,
         # bcs = apply_args(bcs, CS() ; N=N, dx=dx, xmin=xmin, lattice=lattice, kwargs...)
         # depth = haskey(kwargs,:depth) ? kwargs[:depth] : 0
         # bls = apply_args(bls; Δ=Δ, depth=depth)
-        h1 = typeof(bls[1])<:Tuple{noBL,noBL} ? zeros(Int,size(x[1],1),1) : 1im*(bls[1][1].(x[1],x[2][1]) + bls[1][2].(x[1],x[2][1]))
-        h2 = typeof(bls[2])<:Tuple{noBL,noBL} ? zeros(Int,1,size(x[2],1)) : 1im*(bls[2][1].(x[1][1],x[2]) + bls[2][2].(x[1][1],x[2]))
+        h1 = typeof(bls[1])<:Tuple{noBL,noBL} ? zeros(Int,size(x[1],1),1) : 1im*(bls[1][1].(x[1],x[2][1]) + bls[1][2].(x[1],x[2][1])) .+ zeros(Int,size(x[1],1),1)
+        h2 = typeof(bls[2])<:Tuple{noBL,noBL} ? zeros(Int,1,size(x[2],1)) : 1im*(bls[2][1].(x[1][1],x[2]) + bls[2][2].(x[1][1],x[2])) .+ zeros(Int,1,size(x[2],1))
         h = (h1,h2)
-        h1 = typeof(bls[1])<:Tuple{noBL,noBL} ? zeros(Int,size(xd[1],1),1) : 1im*(bls[1][1].(xd[1], x[2][1]) + bls[1][2].(xd[1], x[2][1]))
-        h2 = typeof(bls[2])<:Tuple{noBL,noBL} ? zeros(Int,1,size(xd[2],1)) : 1im*(bls[2][1].( x[1][1],xd[2]) + bls[2][2].( x[1][1],xd[2]))
+        h1 = typeof(bls[1])<:Tuple{noBL,noBL} ? zeros(Int,size(xd[1],1),1) : 1im*(bls[1][1].(xd[1], x[2][1]) + bls[1][2].(xd[1], x[2][1])) .+ zeros(Int,size(xd[1],1),1)
+        h2 = typeof(bls[2])<:Tuple{noBL,noBL} ? zeros(Int,1,size(xd[2],1)) : 1im*(bls[2][1].( x[1][1],xd[2]) + bls[2][2].( x[1][1],xd[2])) .+ zeros(Int,1,size(xd[2],1))
         hd = (h1,h2)
-        f1 = typeof(bls[1])<:Tuple{noBL,noBL} ? zeros(Int,size(x[1],1),1) : 1im*(-reverse(cumsum(bls[1][1].(reverse(x[1]),x[2][1]);dims=2);dims=1) + cumsum(bls[1][2].(x[1],x[2][1]);dims=2))*dx[1]
+        f1 = typeof(bls[1])<:Tuple{noBL,noBL} ? zeros(Int,size(x[1],1),1) : 1im*(-reverse(cumsum(bls[1][1].(reverse(x[1]),x[2][1]);dims=2);dims=1) + cumsum(bls[1][2].(x[1],x[2][1]);dims=2))*dx[1] .+ zeros(Int,size(x[1],1),1)
         f2 = zeros(Int,1,size(x[1],1))
         f = (f1,f2)
-        fd1 = typeof(bls[1])<:Tuple{noBL,noBL} ? zeros(Int,size(xd[1],1),1) : 1im*(-reverse(cumsum(bls[1][1].(reverse(xd[1]),x[2][1]);dims=2);dims=1) + cumsum(bls[1][2].(xd[1],x[2][1]);dims=2))*dx[1]
+        fd1 = typeof(bls[1])<:Tuple{noBL,noBL} ? zeros(Int,size(xd[1],1),1) : 1im*(-reverse(cumsum(bls[1][1].(reverse(xd[1]),x[2][1]);dims=2);dims=1) + cumsum(bls[1][2].(xd[1],x[2][1]);dims=2))*dx[1] .+zeros(Int,size(xd[1],1),1)
         fd2 = zeros(Int,1,size(xd[2],1))
         fd = (fd1,fd2)
 
@@ -268,7 +268,7 @@ struct OperatorConstructor{ORD,DIM,CS,TBL1,TBL2,TBK,TB1,TB2,TOD}
         rcv = rcv.(i1, j1, i2, j2, vals)
         N = OC.N
         if CS<:Polar && DIM==2
-            rf = OC.definition.x[1] .+ OC.definition.f[1][end,:]/args[1]
+            rf = OC.definition.x[1] .+ OC.definition.f[1]/args[1]
             rf⁻² = 1 ./rf.^2
             S = kron(sparse(I,N[2],N[2]),spdiagm(0=>rf⁻²[:]))
             RCV = Array{RowColVal{eltype(S)},1}(undef,length(rcv))
@@ -299,7 +299,7 @@ struct OperatorConstructor{ORD,DIM,CS,TBL1,TBL2,TBK,TB1,TB2,TOD}
 
         N = OC.N
         if CS<:Polar && DIM==2
-            rf = OC.definition.x[1] .+ OC.definition.f[1][end,:]/args[1]
+            rf = OC.definition.x[1] .+ OC.definition.f[1]/args[1]
             rf⁻² = 1 ./rf.^2
             S = kron(sparse(I,N[2],N[2]),spdiagm(0=>rf⁻²[:]))
             RCV = Array{RowColVal{eltype(S)},1}(undef,length(rcv))
@@ -487,7 +487,7 @@ function bulk_op(OD::OperatorDefinition{ORD,DIM,CS}, OC::OperatorConstructor, ar
 
     h = 1 .+ OC.definition.h[DIM]/args[1]
     if CS<:Polar && DIM==1
-        rf = OC.definition.x[DIM] + OC.definition.f[DIM]/args[1]
+        rf = OC.definition.x[1] + OC.definition.f[1]/args[1]
         s = RowColVal(OD.N,(rf.*h)[:],DIM)
     else
         s = RowColVal(OD.N,h[:],DIM)
